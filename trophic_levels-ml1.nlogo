@@ -1,14 +1,15 @@
-globals[ ]
+globals[ grass-per mice-per ]
 
 breed[mice mouse]
 breed[cats cat]
 
+patches-own[countdown]
 mice-own[max-energy energy]
-cats-own[max-energy energy] 
+cats-own[max-energy energy target life] 
 
 to setup
   ca
-  
+  set mice-per .35
 ; initialize landscape to brown earth
   ask patches
   [
@@ -36,9 +37,9 @@ to setup
    set size 0.6
    set shape "circle"
    set color white
-   setxy random-xcor random-ycor
-   set energy random max-energy 
-   set max-energy 50    
+   setxy random-xcor random-ycor 
+   set max-energy 20    
+   set energy random max-energy
   ]
 
 ; create cats  
@@ -47,9 +48,20 @@ to setup
    set size 0.8
    set shape "circle 2"
    set color black
-   setxy random-xcor random-ycor
-   set energy random max-energy 
-   set max-energy 70      
+   setxy random-xcor random-ycor 
+   set max-energy 100
+   set energy random max-energy      
+   set life (random 60) + 20
+  ]
+  
+  ask mice
+  [
+    move-to min-one-of (patches with [pcolor = 33]) [distance myself]
+  ]
+  
+  ask cats
+  [
+    set target min-one-of mice [distance myself]
   ]
 
 end ;end setup
@@ -57,48 +69,139 @@ end ;end setup
   
 ; main procedure
 to go
+  if not any? mice [stop]
+  if not any? cats [stop]
   ask mice
   [
-   flee
-   forage
-   reproduce-mice 
-      
+   flee-forage
+   reproduce-mice
+   agent-die
   ]
   
   ask cats
   [
    chase
    reproduce-cats 
-    
-    
+   cat-die
+   set life life - 1
   ]
+  
+  ask patches
+  [
+    patch-grow
+  ]
+  
+  do-plot
+  tick
   
 end ; end go main procedure 
   
   
 ;mice procedures  
-to flee 
+to flee-forage 
+  let predator one-of cats with [distance myself < safe-radius]
+  if predator != nobody
+  [
+    if pcolor = 33
+    [
+      move-to one-of patches with [pcolor = 33]
+      stop
+    ]
+    set heading towards min-one-of patches with [pcolor = 33] [distance myself]
+    fd 1
+    set energy energy - 1
+    stop
+  ]
   
-end
-
-to forage
+  if pcolor = 54
+  [
+    set energy energy + grass-energy
+    set pcolor 37
+    ask patch-here [set countdown 4]
+  ]
   
+  set energy energy - 1
+  rt random 50
+  lt random 50
+  fd 1
 end
 
 to reproduce-mice
-  
+  if energy >= max-energy
+  [
+    set energy energy / 2
+    hatch 2
+    [
+    ]
+  ]
 end
 
 
 
 ;cats procedures
 to chase
+  if target = nobody
+  [
+    set target min-one-of mice [distance myself]
+  ]
   
+  if target = nobody
+  [ stop ]
+  
+  if distance target < safe-radius
+  [
+    set energy energy + ([energy] of target) * mice-per
+    ask target [ die ]
+    stop
+  ]
+  
+  set energy energy - 9
+  set heading towards target
+  fd 2
 end
 
+to agent-die
+
+  if energy <= 0 [ die ]
+end
+
+to cat-die
+  if energy <= 0 [ die ]
+  if life <= 0 [ die ]
+end
 
 to reproduce-cats
-  
+  if energy >= max-energy
+  [
+    let litter-size random max-litter
+    if litter-size = 0
+    [
+      set litter-size 1
+    ]
+    set energy energy / litter-size
+    hatch litter-size [set life 60]
+  ]
+end
+
+to patch-grow
+  if pcolor = 37
+  [
+    set countdown countdown - 1
+    if countdown = 0
+    [
+      set pcolor 54
+    ]
+  ]
+end
+
+to do-plot
+  set-current-plot "Populations"
+  set-current-plot-pen "cats"
+  plot count cats
+  set-current-plot-pen "mice"
+  plot count mice
+  set-current-plot-pen "grass"
+  plot count patches with [pcolor = 54] / 4
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -168,7 +271,7 @@ num-mice
 num-mice
 1
 50
-20
+42
 1
 1
 NIL
@@ -213,11 +316,98 @@ num-holes
 num-holes
 1
 30
-15
+28
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+708
+42
+880
+75
+safe-radius
+safe-radius
+1
+10
+3
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+763
+96
+935
+129
+max-litter
+max-litter
+1
+8
+2
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+704
+165
+876
+198
+grass-energy
+grass-energy
+1
+10
+10
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+80
+346
+152
+391
+NIL
+count mice
+17
+1
+11
+
+MONITOR
+86
+411
+157
+456
+NIL
+count cats
+17
+1
+11
+
+PLOT
+748
+229
+948
+379
+Populations
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+PENS
+"default" 1.0 0 -16777216 true
+"Cats" 1.0 0 -2674135 true
+"Mice" 1.0 0 -7500403 true
+"grass" 1.0 0 -10899396 true
 
 @#$#@#$#@
 WHAT IS IT?
