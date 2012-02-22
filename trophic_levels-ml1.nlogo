@@ -4,12 +4,12 @@ breed[mice mouse]
 breed[cats cat]
 
 patches-own[countdown]
-mice-own[max-energy energy]
-cats-own[max-energy energy target life] 
+mice-own[max-energy energy mycat life]
+cats-own[max-energy energy target life]
 
 to setup
   ca
-  set mice-per .35
+  set mice-per .75
 ; initialize landscape to brown earth
   ask patches
   [
@@ -18,8 +18,8 @@ to setup
 
 ; initialize grass
   ask n-of num-grass-clumps patches
-  [ 
-   ask n-of 60 patches in-radius 5 
+  [
+   ask n-of 60 patches in-radius 5
     [
       set pcolor 54
     ]
@@ -27,31 +27,33 @@ to setup
   
 ; initialize holes
   ask n-of num-holes patches
-  [    
+  [
    set pcolor 33
   ]
 
-; create mice  
-  create-mice num-mice 
+; create mice
+  create-mice num-mice
   [
    set size 0.6
    set shape "circle"
    set color white
-   setxy random-xcor random-ycor 
-   set max-energy 20    
-   set energy random max-energy
+   setxy random-xcor random-ycor
+   set max-energy 20
+   set energy 10
+   set mycat 0
+   set life 10
   ]
 
-; create cats  
+; create cats
   create-cats num-cats
   [
    set size 0.8
    set shape "circle 2"
    set color black
-   setxy random-xcor random-ycor 
+   setxy random-xcor random-ycor
    set max-energy 100
-   set energy random max-energy      
-   set life (random 60) + 20
+   set energy 50
+   set life 30
   ]
   
   ask mice
@@ -61,7 +63,8 @@ to setup
   
   ask cats
   [
-    set target min-one-of mice [distance myself]
+    set target min-one-of mice with [mycat < 2] [distance myself]
+    ask target [ set mycat mycat + 1 ]
   ]
 
 end ;end setup
@@ -71,17 +74,21 @@ end ;end setup
 to go
   if not any? mice [stop]
   if not any? cats [stop]
+  
   ask mice
   [
+    if count mice-here > 5 [die]
    flee-forage
    reproduce-mice
    agent-die
+   set life life - 1
   ]
   
   ask cats
   [
+    if count cats-here > 2 [die]
    chase
-   reproduce-cats 
+   reproduce-cats
    cat-die
    set life life - 1
   ]
@@ -94,11 +101,11 @@ to go
   do-plot
   tick
   
-end ; end go main procedure 
+end ; end go main procedure
   
   
-;mice procedures  
-to flee-forage 
+;mice procedures
+to flee-forage
   let predator one-of cats with [distance myself < safe-radius]
   if predator != nobody
   [
@@ -132,6 +139,9 @@ to reproduce-mice
     set energy energy / 2
     hatch 2
     [
+      set life 10
+      set mycat 0
+      fd 2
     ]
   ]
 end
@@ -142,11 +152,21 @@ end
 to chase
   if target = nobody
   [
-    set target min-one-of mice [distance myself]
+    set target min-one-of mice with [mycat < 2] [distance myself]
+    if target = nobody [ fd 2 stop] ;if there are no mice without target, just wander around for a bit 
+    ask target [ set mycat mycat + 1 ]
   ]
   
-  if target = nobody
-  [ stop ]
+  ;kitty looses interest if target reaches a hole
+  let temp yellow ;get color target is on -> want to check if its a hole
+  ask target [ set temp pcolor ]
+  if pcolor = 33
+  [
+    ask target [ set mycat mycat - 1 ]
+    set target min-one-of mice with [mycat < 2] [distance myself]
+    if target = nobody [ fd 2 stop ] ;if there are no mice without target, just wander around for a bit 
+    ask target [ set mycat mycat + 1 ]
+  ]
   
   if distance target < safe-radius
   [
@@ -155,7 +175,7 @@ to chase
     stop
   ]
   
-  set energy energy - 9
+  set energy energy - 1
   set heading towards target
   fd 2
 end
@@ -178,8 +198,13 @@ to reproduce-cats
     [
       set litter-size 1
     ]
-    set energy energy / litter-size
-    hatch litter-size [set life 60]
+    set energy 30
+    hatch litter-size 
+    [
+      set life 30
+      set target nobody
+      fd 1
+    ]
   ]
 end
 
@@ -203,6 +228,8 @@ to do-plot
   set-current-plot-pen "grass"
   plot count patches with [pcolor = 54] / 4
 end
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -269,10 +296,10 @@ SLIDER
 153
 num-mice
 num-mice
-1
-50
-42
-1
+0
+200
+150
+10
 1
 NIL
 HORIZONTAL
@@ -286,7 +313,7 @@ num-cats
 num-cats
 1
 50
-11
+10
 1
 1
 NIL
@@ -300,8 +327,8 @@ SLIDER
 num-grass-clumps
 num-grass-clumps
 0
-10
-7
+20
+13
 1
 1
 NIL
@@ -314,10 +341,10 @@ SLIDER
 310
 num-holes
 num-holes
-1
-30
-28
-1
+0
+100
+90
+5
 1
 NIL
 HORIZONTAL
@@ -331,7 +358,7 @@ safe-radius
 safe-radius
 1
 10
-3
+2
 1
 1
 NIL
@@ -345,8 +372,8 @@ SLIDER
 max-litter
 max-litter
 1
-8
-2
+11
+11
 1
 1
 NIL
@@ -442,7 +469,7 @@ This section could give some ideas of things to add or change in the procedures 
 
 NETLOGO FEATURES
 ----------------
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
+This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab. It might also point out places where workarounds were needed because of missing features.
 
 
 RELATED MODELS
