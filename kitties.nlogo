@@ -41,7 +41,7 @@ to setup
    set max-energy 20
    set energy 10
    set mycat 0
-   set life 30
+   set life 10
   ]
 
 ; create cats
@@ -53,7 +53,7 @@ to setup
    setxy random-xcor random-ycor
    set max-energy 100
    set energy 50
-   set life 80
+   set life 30
   ]
   
   ask mice
@@ -77,6 +77,7 @@ to go
   
   ask mice
   [
+    if count mice-here > 5 [die]
    flee-forage
    reproduce-mice
    agent-die
@@ -85,6 +86,7 @@ to go
   
   ask cats
   [
+    if count cats-here > 2 [die]
    chase
    reproduce-cats
    cat-die
@@ -135,10 +137,11 @@ to reproduce-mice
   if energy >= max-energy
   [
     set energy energy / 2
-    hatch 3
+    hatch 2
     [
-      set life 30
+      set life 10
       set mycat 0
+      fd 2
     ]
   ]
 end
@@ -196,7 +199,12 @@ to reproduce-cats
       set litter-size 1
     ]
     set energy 30
-    hatch litter-size [set life 60 set target nobody]
+    hatch litter-size 
+    [
+      set life 30
+      set target nobody
+      fd 1
+    ]
   ]
 end
 
@@ -305,7 +313,7 @@ num-cats
 num-cats
 1
 50
-25
+10
 1
 1
 NIL
@@ -319,8 +327,8 @@ SLIDER
 num-grass-clumps
 num-grass-clumps
 0
-10
-8
+20
+13
 1
 1
 NIL
@@ -333,10 +341,10 @@ SLIDER
 310
 num-holes
 num-holes
-1
-30
-20
-1
+0
+100
+90
+5
 1
 NIL
 HORIZONTAL
@@ -365,7 +373,7 @@ max-litter
 max-litter
 1
 11
-6
+11
 1
 1
 NIL
