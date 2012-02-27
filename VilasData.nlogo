@@ -1,49 +1,182 @@
+;Each row seems to be 1351 units wide.  Starting at 105,500 (y,x), 142462
+
+patches-own [landcover canopy2k1 house1996 house2k5 frontage lakesize road soil ownership zoning]
+
+globals [
+  water-color
+  ice-color
+  dev-op-color
+  dev-low-color
+  dev-med-color
+  dev-hi-color
+  barren-color
+  forest-dec-color
+  forest-ever-color
+  forest-mix-color
+  shrub-color
+  shrub-dwarf-color
+  herb-grass-color
+  herb-sed-color
+  herb-lic-color
+  herb-moss-color
+  plant-past-color
+  plant-crop-color
+  wet-woody-color
+  wet-emerg-color
+  
+  water
+  ice
+  dev-op
+  dev-low
+  dev-med
+  dev-hi
+  barren
+  forest-dec
+  forest-ever
+  forest-mix
+  shrub
+  shrub-dwarf
+  herb-grass
+  herb-sed
+  herb-lic
+  herb-moss
+  plant-past
+  plant-crop
+  wet-woody
+  wet-emerg
+]
+
 to setup
   clear-patches
+  set water-color 105
+  set ice-color 9.9
+  set dev-op-color 137
+  set dev-low-color 134
+  set dev-med-color 15
+  set dev-hi-color 13
+  set barren-color 38
+  set forest-dec-color 57
+  set forest-ever-color 53
+  set forest-mix-color 58
+  set shrub-color 27
+  set shrub-dwarf-color 25
+  set herb-grass-color 47
+  set herb-sed-color 44
+  set herb-lic-color 43
+  set herb-moss-color 85
+  set plant-past-color 45
+  set plant-crop-color 22
+  set wet-woody-color 87
+  set wet-emerg-color 94
+  
+  set water 11
+  set ice 12
+  set dev-op 21
+  set dev-low 22
+  set dev-med 23
+  set dev-hi 24
+  set barren 31
+  set forest-dec 41
+  set forest-ever 42
+  set forest-mix 43
+  set shrub-dwarf 51
+  set shrub 52
+  set herb-grass 71
+  set herb-sed 72
+  set herb-lic 73
+  set herb-moss 74
+  set plant-past 81
+  set plant-crop 82
+  set wet-woody 90
+  set wet-emerg 95
   file-open user-file
-  let lineone file-read-line
-  ;while [not file-at-end?]
+  repeat 142462
+  [
+    let lineone file-read-line
+  ]
   repeat 100
   [
-    let id file-read
-    let skip1 file-read-characters 1
-    let row file-read - 50
-    let skip2 file-read-characters 1
-    let col file-read - 50
-    ask patch col row [ set pcolor red ]
-    let skip3 file-read-characters 1
-    let landcover file-read
-    let skip4 file-read-characters 1
-    let canopy2k1 file-read
-    let skip5 file-read-characters 1
-    let house1996 file-read
-    let skip6 file-read-characters 1
-    let house2k5 file-read
-    let skip7 file-read-characters 1
-    let frontage file-read
-    let skip8 file-read-characters 1
-    let lakesize file-read
-    let skip9 file-read-characters 1
-    let road file-read
-    let skip10 file-read-characters 1
-    let soil file-read
-    let skip11 file-read-characters 1
-    let ownership file-read
-    let skip12 file-read-characters 1
-    let zoning file-read
+    repeat 100
+    [
+      let id file-read
+      ;print id
+      let skip1 file-read-characters 1
+      ;print skip1
+      let row file-read - 155
+      let skip2 file-read-characters 1
+      let col file-read - 551
+      ;ask patch col row [ set pcolor red ]
+      let skip3 file-read-characters 1
+      let templandcover file-read
+      ;print "Location"
+      ;print col
+      ;print row
+      ask patch col row [ set landcover templandcover ]
+      ;print templandcover
+      ask patch col row [select-case templandcover [
+        [11 105] ;water
+        [12 9.9] ;ice
+        [21 137] ;dev-op
+        [22 134] ;dev-low
+        [23 15]  ;dev-med
+        [24 13]  ;dev-hi
+        [31 38]  ;barren
+        [41 57]  ;forest-dec
+        [42 53]  ;forest-ever
+        [43 58]  ;forest-mix
+        [51 25]  ;shrub-dwarf
+        [52 27]  ;shrub
+        [71 47]  ;herb
+        [72 44]  ;herb-seg
+        [73 43]  ;herb-lic
+        [74 85]  ;herb-moss
+        [81 45]  ;plant-past
+        [82 22]  ;plant-crop
+        [90 87]  ;wet-wood
+        [95 94]  ;wet-herb
+        [255 125]
+      ]]
+      let skip4 file-read-characters 1
+      ask patch col row [ set canopy2k1 file-read ]
+      let skip5 file-read-characters 1
+      ask patch col row [ set house1996 file-read ]
+      let skip6 file-read-characters 1
+      ask patch col row [ set house2k5 file-read ]
+      let skip7 file-read-characters 1
+      ask patch col row [ set frontage file-read ]
+      let skip8 file-read-characters 1
+      ask patch col row [ set lakesize file-read ]
+      let skip9 file-read-characters 1
+      ask patch col row [ set road file-read ]
+      let skip10 file-read-characters 1
+      ask patch col row [ set soil file-read ]
+      let skip11 file-read-characters 1
+      ask patch col row [ set ownership file-read ]
+      let skip12 file-read-characters 1
+      ask patch col row [ set zoning file-read ]
+    ]
+    repeat 1252 [let skipline file-read-line]
   ]
   
   file-close
 end
+
+to select-case [value cases]
+  foreach cases
+  [
+    ;print ?1
+    if (item 0 ?1 = value) [ set pcolor (item 1 ?1) stop ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+171
 10
-1533
-1354
-50
-50
-13.0
+809
+669
+51
+51
+6.1
 1
 10
 1
@@ -53,10 +186,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--50
-50
--50
-50
+-51
+51
+-51
+51
 0
 0
 1
