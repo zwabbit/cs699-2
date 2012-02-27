@@ -10,7 +10,7 @@ to setup
     let row file-read - 50
     let skip2 file-read-characters 1
     let col file-read - 50
-    ask patch row col [ set pcolor red ]
+    ask patch col row [ set pcolor red ]
     let skip3 file-read-characters 1
     let landcover file-read
     let skip4 file-read-characters 1
