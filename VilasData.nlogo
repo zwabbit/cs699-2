@@ -1,243 +1,48 @@
-globals[ grass-per mice-per ]
-
-breed[mice mouse]
-breed[cats cat]
-
-patches-own[countdown]
-mice-own[max-energy energy mycat life]
-cats-own[max-energy energy target life]
-
 to setup
-  ca
-  set mice-per .75
-; initialize landscape to brown earth
-  ask patches
+  clear-patches
+  file-open user-file
+  let lineone file-read-line
+  ;while [not file-at-end?]
+  repeat 100
   [
-    set pcolor 37
-  ]
-
-; initialize grass
-  ask n-of num-grass-clumps patches
-  [
-   ask n-of 60 patches in-radius 5
-    [
-      set pcolor 54
-    ]
-   ]
-  
-; initialize holes
-  ask n-of num-holes patches
-  [
-   set pcolor 33
-  ]
-
-; create mice
-  create-mice num-mice
-  [
-   set size 0.6
-   set shape "circle"
-   set color white
-   setxy random-xcor random-ycor
-   set max-energy 20
-   set energy 10
-   set mycat 0
-   set life 10
-  ]
-
-; create cats
-  create-cats num-cats
-  [
-   set size 0.8
-   set shape "circle 2"
-   set color black
-   setxy random-xcor random-ycor
-   set max-energy 100
-   set energy 50
-   set life 30
+    let id file-read
+    let skip1 file-read-characters 1
+    let row file-read - 50
+    let skip2 file-read-characters 1
+    let col file-read - 50
+    ask patch col row [ set pcolor red ]
+    let skip3 file-read-characters 1
+    let landcover file-read
+    let skip4 file-read-characters 1
+    let canopy2k1 file-read
+    let skip5 file-read-characters 1
+    let house1996 file-read
+    let skip6 file-read-characters 1
+    let house2k5 file-read
+    let skip7 file-read-characters 1
+    let frontage file-read
+    let skip8 file-read-characters 1
+    let lakesize file-read
+    let skip9 file-read-characters 1
+    let road file-read
+    let skip10 file-read-characters 1
+    let soil file-read
+    let skip11 file-read-characters 1
+    let ownership file-read
+    let skip12 file-read-characters 1
+    let zoning file-read
   ]
   
-  ask mice
-  [
-    move-to min-one-of (patches with [pcolor = 33]) [distance myself]
-  ]
-  
-  ask cats
-  [
-    set target min-one-of mice with [mycat < 2] [distance myself]
-    ask target [ set mycat mycat + 1 ]
-  ]
-
-end ;end setup
-
-  
-; main procedure
-to go
-  if not any? mice [stop]
-  if not any? cats [stop]
-  
-  ask mice
-  [
-    if count mice-here > 5 [die]
-   flee-forage
-   reproduce-mice
-   agent-die
-   set life life - 1
-  ]
-  
-  ask cats
-  [
-    if count cats-here > 2 [die]
-   chase
-   reproduce-cats
-   cat-die
-   set life life - 1
-  ]
-  
-  ask patches
-  [
-    patch-grow
-  ]
-  
-  do-plot
-  tick
-  
-end ; end go main procedure
-  
-  
-;mice procedures
-to flee-forage
-  let predator one-of cats with [distance myself < safe-radius]
-  if predator != nobody
-  [
-    if pcolor = 33
-    [
-      move-to one-of patches with [pcolor = 33]
-      stop
-    ]
-    set heading towards min-one-of patches with [pcolor = 33] [distance myself]
-    fd 1
-    set energy energy - 1
-    stop
-  ]
-  
-  if pcolor = 54
-  [
-    set energy energy + grass-energy
-    set pcolor 37
-    ask patch-here [set countdown 4]
-  ]
-  
-  set energy energy - 1
-  rt random 50
-  lt random 50
-  fd 1
+  file-close
 end
-
-to reproduce-mice
-  if energy >= max-energy
-  [
-    set energy energy / 2
-    hatch 2
-    [
-      set life 10
-      set mycat 0
-      fd 2
-    ]
-  ]
-end
-
-
-
-;cats procedures
-to chase
-  if target = nobody
-  [
-    set target min-one-of mice with [mycat < 2] [distance myself]
-    if target = nobody [ fd 2 stop] ;if there are no mice without target, just wander around for a bit 
-    ask target [ set mycat mycat + 1 ]
-  ]
-  
-  ;kitty looses interest if target reaches a hole
-  let temp yellow ;get color target is on -> want to check if its a hole
-  ask target [ set temp pcolor ]
-  if pcolor = 33
-  [
-    ask target [ set mycat mycat - 1 ]
-    set target min-one-of mice with [mycat < 2] [distance myself]
-    if target = nobody [ fd 2 stop ] ;if there are no mice without target, just wander around for a bit 
-    ask target [ set mycat mycat + 1 ]
-  ]
-  
-  if distance target < safe-radius
-  [
-    set energy energy + ([energy] of target) * mice-per
-    ask target [ die ]
-    stop
-  ]
-  
-  set energy energy - 1
-  set heading towards target
-  fd 2
-end
-
-to agent-die
-
-  if energy <= 0 [ die ]
-end
-
-to cat-die
-  if energy <= 0 [ die ]
-  if life <= 0 [ die ]
-end
-
-to reproduce-cats
-  if energy >= max-energy
-  [
-    let litter-size random max-litter
-    if litter-size = 0
-    [
-      set litter-size 1
-    ]
-    set energy 30
-    hatch litter-size 
-    [
-      set life 30
-      set target nobody
-      fd 1
-    ]
-  ]
-end
-
-to patch-grow
-  if pcolor = 37
-  [
-    set countdown countdown - 1
-    if countdown = 0
-    [
-      set pcolor 54
-    ]
-  ]
-end
-
-to do-plot
-  set-current-plot "Populations"
-  set-current-plot-pen "cats"
-  plot count cats
-  set-current-plot-pen "mice"
-  plot count mice
-  set-current-plot-pen "grass"
-  plot count patches with [pcolor = 54] / 4
-end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-649
-470
-16
-16
+1533
+1354
+50
+50
 13.0
 1
 10
@@ -245,13 +50,13 @@ GRAPHICS-WINDOW
 1
 1
 0
+0
+0
 1
-1
-1
--16
-16
--16
-16
+-50
+50
+-50
+50
 0
 0
 1
@@ -259,9 +64,9 @@ ticks
 
 BUTTON
 31
-37
-97
-70
+34
+94
+67
 NIL
 setup
 NIL
@@ -272,169 +77,6 @@ NIL
 NIL
 NIL
 NIL
-
-BUTTON
-125
-40
-188
-73
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-
-SLIDER
-29
-120
-201
-153
-num-mice
-num-mice
-0
-200
-150
-10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-25
-174
-197
-207
-num-cats
-num-cats
-1
-50
-10
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-25
-224
-199
-257
-num-grass-clumps
-num-grass-clumps
-0
-20
-13
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-23
-277
-195
-310
-num-holes
-num-holes
-0
-100
-90
-5
-1
-NIL
-HORIZONTAL
-
-SLIDER
-708
-42
-880
-75
-safe-radius
-safe-radius
-1
-10
-2
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-763
-96
-935
-129
-max-litter
-max-litter
-1
-11
-11
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-704
-165
-876
-198
-grass-energy
-grass-energy
-1
-10
-10
-1
-1
-NIL
-HORIZONTAL
-
-MONITOR
-80
-346
-152
-391
-NIL
-count mice
-17
-1
-11
-
-MONITOR
-86
-411
-157
-456
-NIL
-count cats
-17
-1
-11
-
-PLOT
-748
-229
-948
-379
-Populations
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-PENS
-"default" 1.0 0 -16777216 true
-"Cats" 1.0 0 -2674135 true
-"Mice" 1.0 0 -7500403 true
-"grass" 1.0 0 -10899396 true
 
 @#$#@#$#@
 WHAT IS IT?
@@ -469,7 +111,7 @@ This section could give some ideas of things to add or change in the procedures 
 
 NETLOGO FEATURES
 ----------------
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab. It might also point out places where workarounds were needed because of missing features.
+This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
 
 
 RELATED MODELS
