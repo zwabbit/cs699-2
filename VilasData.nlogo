@@ -1,6 +1,31 @@
 ;Each row seems to be 1351 units wide.  Starting at 105,500 (y,x), 142462
 
-patches-own [landcover canopy2k1 house1996 house2k5 frontage lakesize road soil ownership zoning]
+patches-own
+[
+  landcover 
+  canopy2k1 
+  house1996 
+  house2k5 
+  frontage
+  lakesize 
+  road soil 
+  ownership 
+  zoning 
+  mean_diam
+  bin_2
+  bin_4
+  bin_6
+  bin_8
+  bin_10
+  bin_12
+  bin_14
+  bin_16
+  bin_18
+  bin_20
+  bin_22
+  bin_24
+  dist_type ;0 if normal, 1 if neg exp
+]
 
 globals [
   water-color
@@ -154,10 +179,10 @@ to setup
       ask patch col row [ set ownership file-read ]
       let skip12 file-read-characters 1
       ask patch col row [ set zoning file-read ]
+      ask patch col row [initialize-trees]
     ]
     repeat 1252 [let skipline file-read-line]
-  ]
-  
+  ]  
   file-close
 end
 
@@ -168,6 +193,293 @@ to select-case [value cases]
     if (item 0 ?1 = value) [ set pcolor (item 1 ?1) stop ]
   ]
 end
+
+to initialize-trees
+  let weights_conif [0.556035896 0.258728096 0.185236008]
+  let weights_deci [0.43 0.37 0.2]
+  let weights_wet [0.424745355 0.350450241 0.224804403]
+  let weights_mix [0.424745355 0.350450241 0.224804403]
+  
+  if pcolor = 53 ;Coniferous
+  [
+    calc_mean_diam weights_conif 
+    generate_dist
+  ]
+  
+  if pcolor = 57 ;Deciduous
+  [
+    calc_mean_diam weights_deci 
+    generate_dist
+  ]
+  
+  if pcolor = 87 ;Forested Wetlands
+  [
+    calc_mean_diam weights_wet 
+    generate_dist
+  ]
+  
+  if pcolor = 58 ;Mixed
+  [
+    calc_mean_diam weights_mix 
+    generate_dist
+  ]
+  
+end
+
+to calc_mean_diam [weights]
+  let treesize [10 8 5]
+  let rand random-float 1
+    if rand < item 0 weights
+    [
+      ;call subroutine
+      calc_mean_diam_sub
+    ] 
+    if rand > item 0 weights and rand < (item 0 weights + item 1 weights)
+    [
+      set mean_diam item 1 treesize
+    ] 
+    if rand > (item 0 weights + item 1 weights)
+    [
+      set mean_diam item 2 treesize
+    ]
+end
+
+to calc_mean_diam_sub
+  let rand random-float 1
+  let treesize [0 2 4 6 8 10 15 20]
+  let distr [0.125 0.25 0.375 0.5 0.625 0.75 0.875]
+  ;uniform distribution i.e Pr[mean_diam = treesize(i)] = 1/8 or 0.125
+  if rand < item 0 distr 
+  [
+    set mean_diam item 0 treesize
+  ]
+  if rand > item 0 distr and rand < item 1 distr
+  [
+    set mean_diam item 1 treesize
+  ] 
+  if rand > item 1 distr and rand < item 2 distr
+  [
+    set mean_diam item 2 treesize
+  ] 
+  if rand > item 2 distr and rand < item 3 distr
+  [
+    set mean_diam item 3 treesize
+  ]
+  if rand > item 3 distr and rand < item 4 distr
+  [
+    set mean_diam item 4 treesize
+  ]
+  if rand > item 4 distr and rand < item 5 distr
+  [
+    set mean_diam item 5 treesize
+  ]
+  if rand > item 5 distr and rand < item 6 distr
+  [
+    set mean_diam item 6 treesize
+  ]
+  if rand > item 6 distr 
+  [
+    set mean_diam item 7 treesize
+  ]
+end
+
+to generate_dist
+  if mean_diam = 0 [stop]
+  let target_basal_area (random 50) + 60
+  let running_basal_area 0
+  let rand random-float 1
+  ifelse rand < 0.5
+  [
+    ;normal diameter distribution 
+    set dist_type 0  
+    ;calculate coefficient of variation of a beta distribution
+    let cv sqrt (5 / 2 * (2 + 5 + 1))
+    let sd cv * mean_diam
+    while[running_basal_area < target_basal_area]
+    [
+      let tree_size random-normal mean_diam sd
+      if tree_size >= 0 and tree_size <= 29
+      [
+        increment_tree_bin tree_size
+        let basal_area 0.005454 * (mean_diam ^ 2)
+        set running_basal_area (running_basal_area + basal_area)
+      ]
+    ]
+  ]
+  [
+    ;negative exponential diameter distribution
+    set dist_type 1
+    ;calculate probabilities
+    let lamda  1 / mean_diam
+    let fds [0 0 0 0 0 0 0 0 0 0 0 0]
+    set fds replace-item 0 fds calc_fd lamda 1.5
+    set fds replace-item 1 fds calc_fd lamda 4
+    set fds replace-item 2 fds calc_fd lamda 6
+    set fds replace-item 3 fds calc_fd lamda 8
+    set fds replace-item 4 fds calc_fd lamda 10
+    set fds replace-item 5 fds calc_fd lamda 12
+    set fds replace-item 6 fds calc_fd lamda 14
+    set fds replace-item 7 fds calc_fd lamda 16
+    set fds replace-item 8 fds calc_fd lamda 18
+    set fds replace-item 9 fds calc_fd lamda 20
+    set fds replace-item 10 fds calc_fd lamda 22
+    set fds replace-item 11 fds calc_fd lamda 26
+   
+    let fd_sum sum fds
+    
+    let distr [0 0 0 0 0 0 0 0 0 0 0 0]
+    set distr replace-item 0 distr (item 0 fds / fd_sum)
+    set distr replace-item 1 distr (item 1 fds / fd_sum)
+    set distr replace-item 2 distr (item 2 fds / fd_sum)
+    set distr replace-item 3 distr (item 3 fds / fd_sum)
+    set distr replace-item 4 distr (item 4 fds / fd_sum)
+    set distr replace-item 5 distr (item 5 fds / fd_sum)
+    set distr replace-item 6 distr (item 6 fds / fd_sum)
+    set distr replace-item 7 distr (item 7 fds / fd_sum)
+    set distr replace-item 8 distr (item 8 fds / fd_sum)
+    set distr replace-item 9 distr (item 9 fds / fd_sum)
+    set distr replace-item 10 distr (item 10 fds / fd_sum)
+    set distr replace-item 11 distr (item 11 fds / fd_sum) 
+    
+    let prob [0 0 0 0 0 0 0 0 0 0 0]
+    set prob replace-item 0 prob item 0 distr
+    set prob replace-item 1 prob (item 0 distr + item 1 distr)
+    set prob replace-item 2 prob (item 0 distr + item 1 distr + item 2 distr)
+    set prob replace-item 3 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr)
+    set prob replace-item 4 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr)
+    set prob replace-item 5 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr)
+    set prob replace-item 6 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+      + item 6 distr)
+    set prob replace-item 7 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+      + item 6 distr + item 7 distr)
+    set prob replace-item 8 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+      + item 6 distr + item 7 distr + item 8 distr)
+    set prob replace-item 9 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+      + item 6 distr + item 7 distr + item 8 distr + item 9 distr)
+    set prob replace-item 10 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+      + item 6 distr + item 7 distr + item 8 distr + item 9 distr + item 10 distr)
+        
+    ;loop
+    while[running_basal_area < target_basal_area]
+    [
+      ;generate new tree, update bin and running_basal_area
+      let rand2 random-float 1
+      if rand2 < item 0 prob
+      [
+        set bin_2 bin_2 + 1
+      ]
+      if rand2 > item 0 prob and rand2 < item 1 prob
+      [
+        set bin_4 bin_4 + 1
+      ]
+      if rand2 > item 1 prob and rand2 < item 2 prob
+      [
+        set bin_6 bin_6 + 1
+      ]
+      if rand2 > item 2 prob and rand2 < item 3 prob
+      [
+        set bin_8 bin_8 + 1
+      ]
+      if rand2 > item 3 prob and rand2 < item 4 prob
+      [
+        set bin_10 bin_10 + 1
+      ]
+      if rand2 > item 4 prob and rand2 < item 5 prob
+      [
+        set bin_12 bin_12 + 1
+      ]
+      if rand2 > item 5 prob and rand2 < item 6 prob
+      [
+        set bin_14 bin_14 + 1
+      ]
+      if rand2 > item 6 prob and rand2 < item 7 prob
+      [
+        set bin_16 bin_16 + 1
+      ]
+      if rand2 > item 7 prob and rand2 < item 8 prob
+      [
+        set bin_18 bin_18 + 1
+      ]
+      if rand2 > item 8 prob and rand2 < item 9 prob
+      [
+        set bin_20 bin_20 + 1
+      ]
+      if rand2 > item 9 prob and rand2 < item 10 prob
+      [
+        set bin_22 bin_22 + 1
+      ]
+      if rand2 > item 10 prob
+      [
+        set bin_24 bin_24 + 1
+      ]   
+      let basal_area 0.005454 * (mean_diam ^ 2)
+      set running_basal_area (running_basal_area + basal_area)      
+    ]
+  ]
+end
+
+to increment_tree_bin [tree_size]
+  let bins [3 5 7 9 11 13 15 17 19 21 23]
+  if tree_size < item 0 bins
+  [
+    set bin_2 bin_2 + 1 
+  ]
+  if tree_size >= item 0 bins and tree_size < item 1 bins
+  [
+    set bin_4 bin_4 + 1
+  ]
+  if tree_size >= item 1 bins and tree_size < item 2 bins
+  [
+    set bin_6 bin_6 + 1
+  ]
+  if tree_size >= item 2 bins and tree_size < item 3 bins
+  [
+    set bin_8 bin_8 + 1
+  ]
+  if tree_size >= item 3 bins and tree_size < item 4 bins
+  [
+    set bin_10 bin_10 + 1
+  ]
+  if tree_size >= item 4 bins and tree_size < item 5 bins
+  [
+    set bin_12 bin_12 + 1
+  ]
+  if tree_size >= item 5 bins and tree_size < item 6 bins
+  [
+    set bin_14 bin_14 + 1
+  ]
+  if tree_size >= item 6 bins and tree_size < item 7 bins
+  [
+    set bin_16 bin_16 + 1
+  ]
+  if tree_size >= item 7 bins and tree_size < item 8 bins
+  [
+    set bin_18 bin_18 + 1
+  ]
+  if tree_size >= item 8 bins and tree_size < item 9 bins
+  [
+    set bin_20 bin_20 + 1
+  ]
+  if tree_size >= item 9 bins and tree_size < item 10 bins
+  [
+    set bin_22 bin_22 + 1
+  ]
+  if tree_size >= item 10 bins
+  [
+    set bin_24 bin_24 + 1
+  ]
+end
+
+to-report calc_fd [lamda medi]
+  report lamda * e ^ (lamda * medi)
+end
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 171
