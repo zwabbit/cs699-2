@@ -293,7 +293,13 @@ to generate_dist
     ;normal diameter distribution 
     set dist_type 0  
     ;calculate coefficient of variation of a beta distribution
-    let cv sqrt (5 / 2 * (2 + 5 + 1))
+    let alpha 2
+    let beta 5
+    ;generate a random number from a beta distribution given a gamma distribution
+    let x random-gamma alpha 1
+    let y random-gamma beta 1 
+    let rand_beta x / (x + y) 
+    let cv rand_beta
     let sd cv * mean_diam
     while[running_basal_area < target_basal_area]
     [
@@ -301,7 +307,7 @@ to generate_dist
       if tree_size >= 0 and tree_size <= 29
       [
         increment_tree_bin tree_size
-        let basal_area 0.005454 * (mean_diam ^ 2)
+        let basal_area 0.005454 * (tree_size ^ 2)
         set running_basal_area (running_basal_area + basal_area)
       ]
     ]
@@ -363,56 +369,69 @@ to generate_dist
     while[running_basal_area < target_basal_area]
     [
       ;generate new tree, update bin and running_basal_area
+      let tree_size 0
       let rand2 random-float 1
       if rand2 < item 0 prob
       [
         set bin_2 bin_2 + 1
+        set tree_size 2
       ]
       if rand2 > item 0 prob and rand2 < item 1 prob
       [
         set bin_4 bin_4 + 1
+        set tree_size 4
       ]
       if rand2 > item 1 prob and rand2 < item 2 prob
       [
         set bin_6 bin_6 + 1
+        set tree_size 6
       ]
       if rand2 > item 2 prob and rand2 < item 3 prob
       [
         set bin_8 bin_8 + 1
+        set tree_size 8
       ]
       if rand2 > item 3 prob and rand2 < item 4 prob
       [
         set bin_10 bin_10 + 1
+        set tree_size 10
       ]
       if rand2 > item 4 prob and rand2 < item 5 prob
       [
         set bin_12 bin_12 + 1
+        set tree_size 12
       ]
       if rand2 > item 5 prob and rand2 < item 6 prob
       [
         set bin_14 bin_14 + 1
+        set tree_size 14
       ]
       if rand2 > item 6 prob and rand2 < item 7 prob
       [
         set bin_16 bin_16 + 1
+        set tree_size 16
       ]
       if rand2 > item 7 prob and rand2 < item 8 prob
       [
         set bin_18 bin_18 + 1
+        set tree_size 18
       ]
       if rand2 > item 8 prob and rand2 < item 9 prob
       [
         set bin_20 bin_20 + 1
+        set tree_size 20
       ]
       if rand2 > item 9 prob and rand2 < item 10 prob
       [
         set bin_22 bin_22 + 1
+        set tree_size 22
       ]
       if rand2 > item 10 prob
       [
         set bin_24 bin_24 + 1
+        set tree_size 24
       ]   
-      let basal_area 0.005454 * (mean_diam ^ 2)
+      let basal_area 0.005454 * (tree_size ^ 2)
       set running_basal_area (running_basal_area + basal_area)      
     ]
   ]
