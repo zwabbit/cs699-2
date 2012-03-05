@@ -1,0 +1,30 @@
+Herbacious
+
+in the setup: clear-all
+
+in the go: 
+tick
+ask patches with [landcover != 11] [ init_herbs ] 
+
+added procedure init_herbs
+
+to init_herbs
+  let doy ticks mod 365
+  let r 0.2
+  let K 5
+  ;initialization / budding
+  if doy = 1 [set herb_veg herb_veg + 1]
+  
+  let delta_pt 0
+  
+  ;calculate delta_pt
+  ifelse doy < 175
+  [
+    set delta_pt r * herb_veg * (1 - (herb_veg / K))
+  ]
+  [
+    set delta_pt (-1) * r * herb_veg 
+  ]
+  set herb_veg herb_veg + delta_pt
+  
+end
