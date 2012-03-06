@@ -1,5 +1,5 @@
 ;Each row seems to be 1351 units wide.  Starting at 105,500 (y,x), 142462
-
+extensions [matrix]
 patches-own
 [
   landcover 
@@ -12,22 +12,22 @@ patches-own
   ownership 
   zoning 
   mean_diam
-  bin_2
-  bin_4
-  bin_6
-  bin_8
-  bin_10
-  bin_12
-  bin_14
-  bin_16
-  bin_18
-  bin_20
-  bin_22
-  bin_24
+  bin_list
   dist_type ;0 if normal, 1 if neg exp
+  herb_veg
 ]
 
 globals [
+  decid_matrix
+  evergreen_matrix
+  mixed_matrix
+  wet_matrix
+  
+  decid_ingrow
+  evergreen_ingrow
+  mixed_ingrow
+  wet_ingrow
+  
   water-color
   ice-color
   dev-op-color
@@ -69,6 +69,7 @@ globals [
   plant-crop
   wet-woody
   wet-emerg
+  s-constant
 ]
 
 to setup
@@ -114,6 +115,9 @@ to setup
   set plant-crop 82
   set wet-woody 90
   set wet-emerg 95
+  
+  set s-constant 80
+  
   file-open user-file
   repeat 142462
   [
@@ -136,7 +140,7 @@ to setup
       ;print "Location"
       ;print col
       ;print row
-      ask patch col row [ set landcover templandcover ]
+      ask patch col row [ set landcover templandcover set bin_list [0 0 0 0 0 0 0 0 0 0 0 0 ] ]
       ;print templandcover
       ask patch col row [select-case templandcover [
         [11 105] ;water
@@ -184,6 +188,10 @@ to setup
     repeat 1252 [let skipline file-read-line]
   ]  
   file-close
+  initialize-matrix 41
+  initialize-matrix 42
+  initialize-matrix 43
+  initialize-matrix 90
 end
 
 to select-case [value cases]
@@ -373,62 +381,74 @@ to generate_dist
       let rand2 random-float 1
       if rand2 < item 0 prob
       [
-        set bin_2 bin_2 + 1
+        set bin_list replace-item 0 bin_list ((item 0 bin_list) + 1)
+        ;set bin_2 bin_2 + 1
         set tree_size 2
       ]
       if rand2 > item 0 prob and rand2 < item 1 prob
       [
-        set bin_4 bin_4 + 1
+        set bin_list replace-item 1 bin_list ((item 1 bin_list) + 1)
+        ;set bin_4 bin_4 + 1
         set tree_size 4
       ]
       if rand2 > item 1 prob and rand2 < item 2 prob
       [
-        set bin_6 bin_6 + 1
+        set bin_list replace-item 2 bin_list ((item 2 bin_list) + 1)
+        ;set bin_6 bin_6 + 1
         set tree_size 6
       ]
       if rand2 > item 2 prob and rand2 < item 3 prob
       [
-        set bin_8 bin_8 + 1
+        set bin_list replace-item 3 bin_list ((item 3 bin_list) + 1)
+        ;set bin_8 bin_8 + 1
         set tree_size 8
       ]
       if rand2 > item 3 prob and rand2 < item 4 prob
       [
-        set bin_10 bin_10 + 1
+        set bin_list replace-item 4 bin_list ((item 4 bin_list) + 1)
+        ;set bin_10 bin_10 + 1
         set tree_size 10
       ]
       if rand2 > item 4 prob and rand2 < item 5 prob
       [
-        set bin_12 bin_12 + 1
+        set bin_list replace-item 5 bin_list ((item 5 bin_list) + 1)
+        ;set bin_12 bin_12 + 1
         set tree_size 12
       ]
       if rand2 > item 5 prob and rand2 < item 6 prob
       [
-        set bin_14 bin_14 + 1
+        set bin_list replace-item 6 bin_list ((item 6 bin_list) + 1)
+        ;set bin_14 bin_14 + 1
         set tree_size 14
       ]
       if rand2 > item 6 prob and rand2 < item 7 prob
       [
-        set bin_16 bin_16 + 1
+        set bin_list replace-item 7 bin_list ((item 7 bin_list) + 1)
+        ;set bin_16 bin_16 + 1
         set tree_size 16
       ]
       if rand2 > item 7 prob and rand2 < item 8 prob
       [
-        set bin_18 bin_18 + 1
+        set bin_list replace-item 8 bin_list ((item 8 bin_list) + 1)
+        ;set bin_18 bin_18 + 1
         set tree_size 18
       ]
       if rand2 > item 8 prob and rand2 < item 9 prob
       [
-        set bin_20 bin_20 + 1
+        set bin_list replace-item 9 bin_list ((item 9 bin_list) + 1)
+        ;set bin_20 bin_20 + 1
         set tree_size 20
       ]
       if rand2 > item 9 prob and rand2 < item 10 prob
       [
-        set bin_22 bin_22 + 1
+        set bin_list replace-item 10 bin_list ((item 10 bin_list) + 1)
+        ;set bin_22 bin_22 + 1
         set tree_size 22
       ]
       if rand2 > item 10 prob
       [
-        set bin_24 bin_24 + 1
+        set bin_list replace-item 11 bin_list ((item 11 bin_list) + 1)
+        ;set bin_24 bin_24 + 1
         set tree_size 24
       ]   
       let basal_area 0.005454 * (tree_size ^ 2)
@@ -441,51 +461,63 @@ to increment_tree_bin [tree_size]
   let bins [3 5 7 9 11 13 15 17 19 21 23]
   if tree_size < item 0 bins
   [
-    set bin_2 bin_2 + 1 
+    set bin_list replace-item 0 bin_list ((item 0 bin_list) + 1)
+    ;set bin_2 bin_2 + 1 
   ]
   if tree_size >= item 0 bins and tree_size < item 1 bins
   [
-    set bin_4 bin_4 + 1
+    set bin_list replace-item 1 bin_list ((item 1 bin_list) + 1)
+    ;set bin_4 bin_4 + 1
   ]
   if tree_size >= item 1 bins and tree_size < item 2 bins
   [
-    set bin_6 bin_6 + 1
+    set bin_list replace-item 2 bin_list ((item 2 bin_list) + 1)
+    ;set bin_6 bin_6 + 1
   ]
   if tree_size >= item 2 bins and tree_size < item 3 bins
   [
-    set bin_8 bin_8 + 1
+    set bin_list replace-item 3 bin_list ((item 3 bin_list) + 1)
+    ;set bin_8 bin_8 + 1
   ]
   if tree_size >= item 3 bins and tree_size < item 4 bins
   [
-    set bin_10 bin_10 + 1
+    set bin_list replace-item 4 bin_list ((item 4 bin_list) + 1)
+    ;set bin_10 bin_10 + 1
   ]
   if tree_size >= item 4 bins and tree_size < item 5 bins
   [
-    set bin_12 bin_12 + 1
+    set bin_list replace-item 5 bin_list ((item 5 bin_list) + 1)
+    ;set bin_12 bin_12 + 1
   ]
   if tree_size >= item 5 bins and tree_size < item 6 bins
   [
-    set bin_14 bin_14 + 1
+    set bin_list replace-item 6 bin_list ((item 6 bin_list) + 1)
+    ;set bin_14 bin_14 + 1
   ]
   if tree_size >= item 6 bins and tree_size < item 7 bins
   [
-    set bin_16 bin_16 + 1
+    set bin_list replace-item 7 bin_list ((item 7 bin_list) + 1)
+    ;set bin_16 bin_16 + 1
   ]
   if tree_size >= item 7 bins and tree_size < item 8 bins
   [
-    set bin_18 bin_18 + 1
+    set bin_list replace-item 8 bin_list ((item 8 bin_list) + 1)
+    ;set bin_18 bin_18 + 1
   ]
   if tree_size >= item 8 bins and tree_size < item 9 bins
   [
-    set bin_20 bin_20 + 1
+    set bin_list replace-item 9 bin_list ((item 9 bin_list) + 1)
+    ;set bin_20 bin_20 + 1
   ]
   if tree_size >= item 9 bins and tree_size < item 10 bins
   [
-    set bin_22 bin_22 + 1
+    set bin_list replace-item 10 bin_list ((item 10 bin_list) + 1)
+    ;set bin_22 bin_22 + 1
   ]
   if tree_size >= item 10 bins
   [
-    set bin_24 bin_24 + 1
+    set bin_list replace-item 11 bin_list ((item 11 bin_list) + 1)
+    ;set bin_24 bin_24 + 1
   ]
 end
 
@@ -493,12 +525,192 @@ to-report calc_fd [lamda medi]
   report lamda * e ^ (lamda * medi)
 end
 
+to grow-forest
+  ;show templast
+  let is_forest 0
+  let treematrix matrix:make-constant 12 1 0
+  matrix:set-column treematrix 0 bin_list
+  let inter2 matrix:make-constant 12 1 0
+  if landcover = 41
+  [
+    let inter1 matrix:times decid_matrix treematrix
+    set inter2 matrix:plus decid_ingrow inter1
+    set is_forest 1
+  ]
+  if landcover = 42
+  [
+    let inter1 matrix:times evergreen_matrix treematrix
+    set inter2 matrix:plus evergreen_ingrow inter1
+    set is_forest 1
+  ]
+  if landcover = 43
+  [
+    let inter1 matrix:times mixed_matrix treematrix
+    set inter2 matrix:plus mixed_ingrow inter1
+    set is_forest 1
+  ]
+  if landcover = 90
+  [
+    let inter1 matrix:times wet_matrix treematrix
+    set inter2 matrix:plus wet_ingrow inter1
+    set is_forest 1
+  ]
+  
+  if is_forest = 0
+  [
+    stop
+  ]
+  
+  set bin_list matrix:get-column inter2 0
+end
 
+to initialize-matrix [cover_id]
+  let upgrowth [0 0 0 0 0 0 0 0 0 0 0 0]
+  let mortality [0 0 0 0 0 0 0 0 0 0 0 0]
+  let ingrowth [0 0 0 0 0 0 0 0 0 0 0 0]
+  
+  if cover_id = 41 ;deciduous
+  [
+    let counter 0
+    repeat 12
+    [
+      let dia (counter + 1) * 2
+      set upgrowth replace-item counter upgrowth (0.0164 - 0.0001 * 0.005454 * dia ^ 2 + 0.0055 * dia - 0.0002 * dia ^ 2)
+      set mortality replace-item counter mortality (0.0336 - 0.0018 * dia + 0.0001 * dia ^ 2 - 0.00002 * s-constant * dia)
+      set ingrowth replace-item counter ingrowth (18.187 - 0.097 * 0.005454 * dia ^ 2)
+      set counter counter + 1
+    ]
+  ]
+  
+  if cover_id = 42 ;evergreen
+  [
+    let counter 0
+    repeat 12
+    [
+      let dia (counter + 1) * 2
+      set upgrowth replace-item counter upgrowth (0.0069 - 0.0001 * 0.005454 * dia ^ 2 + 0.0059 * dia - 0.0002 * dia ^ 2)
+      set mortality replace-item counter mortality (0.0418 - 0.0009 * dia)
+      set ingrowth replace-item counter ingrowth (7.622 - 0.059 * 0.005454 * dia ^ 2)
+      set counter counter + 1
+    ]
+  ]
+  if cover_id = 43 ;mixed
+  [
+    let counter 0
+    repeat 12
+    [
+      let dia (counter + 1) * 2
+      set upgrowth replace-item counter upgrowth (0.0134 - 0.0002 * 0.005454 * dia ^ 2 + 0.0051 * dia - 0.0002 * dia ^ 2 + 0.00002 * s-constant * dia)
+      set mortality replace-item counter mortality (0.0417 - 0.0033 * dia + 0.0001 * dia ^ 2)
+      set ingrowth replace-item counter ingrowth (4.603 - 0.035 * 0.005454 * dia ^ 2)
+      set counter counter + 1
+    ]
+  ]
+  if cover_id = 90 ;wetland with threes
+  [
+    let counter 0
+    repeat 12
+    [
+      let dia (counter + 1) * 2
+      set upgrowth replace-item counter upgrowth (0.0134 - 0.0002 * 0.005454 * dia ^ 2 + 0.0051 * dia - 0.0002 * dia ^ 2 + 0.00002 * s-constant * dia)
+      set mortality replace-item counter mortality (0.0417 - 0.0033 * dia + 0.0001 * dia ^ 2)
+      set ingrowth replace-item counter ingrowth (4.603 - 0.035 * 0.005454 * dia ^ 2)
+      set counter counter + 1
+    ]
+  ]
+  
+  let columns [
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 0 0 0 0 0 0 0 0 0 0 0]
+  ]
+  
+  let column_counter 0
+  repeat 11
+  [
+    let temp (item column_counter columns)
+    set temp replace-item column_counter temp ((1 - (item column_counter mortality)) * (1 - (item column_counter upgrowth)))
+    set temp replace-item (column_counter + 1) temp ((1 - (item column_counter mortality)) * (item column_counter upgrowth))
+    set columns replace-item column_counter columns temp
+    set column_counter column_counter + 1
+    ;show temp
+  ]
+  
+  let templast (item 11 columns)
+  set templast replace-item 11 templast (1 - (item 11 mortality))
+  set columns replace-item 11 columns templast
+  
+  let ingrowthcolumn [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+  set ingrowthcolumn replace-item 0 ingrowthcolumn (item 0 ingrowth)
+  
+  if cover_id = 41
+  [
+    set decid_matrix matrix:from-column-list columns
+    set decid_ingrow matrix:make-constant 12 1 0
+    matrix:set-column decid_ingrow 0 ingrowthcolumn
+  ]
+  if cover_id = 42
+  [
+    set evergreen_matrix matrix:from-column-list columns
+    set evergreen_ingrow matrix:make-constant 12 1 0
+    matrix:set-column evergreen_ingrow 0 ingrowthcolumn
+  ]
+  if cover_id = 43
+  [
+    set mixed_matrix matrix:from-column-list columns
+    set mixed_ingrow matrix:make-constant 12 1 0
+    matrix:set-column mixed_ingrow 0 ingrowthcolumn
+  ]
+  if cover_id = 90
+  [
+    set wet_matrix matrix:from-column-list columns
+    set wet_ingrow matrix:make-constant 12 1 0
+    matrix:set-column wet_ingrow 0 ingrowthcolumn
+  ]
+end
 
+to go
+  let current_time ticks
+  ask patches with [landcover != 11] [ init_herbs ]
+  if (current_time mod 365) = 0
+  [
+    ask patches with [landcover = 41] [ grow-forest ]
+    ask patches with [landcover = 42] [ grow-forest ]
+    ask patches with [landcover = 43] [ grow-forest ]
+    ask patches with [landcover = 90] [ grow-forest ]
+  ]
+  tick
+end
 
-
-
-
+to init_herbs
+  let doy ticks mod 365
+  let r 0.2
+  let K 5
+  ;initialization / budding
+  if doy = 1 [set herb_veg herb_veg + 1]
+  
+  let delta_pt 0
+  
+  ;calculate delta_pt
+  ifelse doy < 175
+  [
+    set delta_pt r * herb_veg * (1 - (herb_veg / K))
+  ]
+  [
+    set delta_pt (-1) * r * herb_veg 
+  ]
+  set herb_veg herb_veg + delta_pt
+  
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 171
@@ -534,6 +746,22 @@ BUTTON
 NIL
 setup
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+
+BUTTON
+33
+85
+130
+118
+NIL
+go
+T
 1
 T
 OBSERVER
