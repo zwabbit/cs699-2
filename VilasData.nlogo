@@ -15,6 +15,7 @@ patches-own
   bin_list
   dist_type ;0 if normal, 1 if neg exp
   herb_veg
+  b_area
 ]
 
 globals [
@@ -70,10 +71,20 @@ globals [
   wet-woody
   wet-emerg
   s-constant
+  
+  max_ba_41
+  min_ba_41
+  max_ba_42
+  min_ba_42
+  max_ba_43
+  min_ba_43
+  max_ba_90
+  min_ba_90
 ]
 
 to setup
   clear-patches
+  reset-ticks
   set water-color 105
   set ice-color 9.9
   set dev-op-color 137
@@ -192,6 +203,19 @@ to setup
   initialize-matrix 42
   initialize-matrix 43
   initialize-matrix 90
+  ;set min_ba_41 [b_area] of min-one-of (patches with [landcover = 41]) [b_area]
+  ;set max_ba_41 [b_area] of max-one-of (patches with [landcover = 41]) [b_area]
+  set min_ba_41 [b_area] of min-one-of patches [b_area]
+  set max_ba_41 [b_area] of max-one-of patches [b_area]
+  
+  ;set min_ba_42 [b_area] of min-one-of (patches with [landcover = 42]) [b_area]
+  ;set max_ba_42 [b_area] of max-one-of (patches with [landcover = 42]) [b_area]
+  
+  ;set min_ba_43 [b_area] of min-one-of (patches with [landcover = 43]) [b_area]
+  ;set max_ba_43 [b_area] of max-one-of (patches with [landcover = 43]) [b_area]
+  
+  ;set min_ba_90 [b_area] of min-one-of (patches with [landcover = 90]) [b_area]
+  ;set max_ba_90 [b_area] of max-one-of (patches with [landcover = 90]) [b_area]
 end
 
 to select-case [value cases]
@@ -208,25 +232,25 @@ to initialize-trees
   let weights_wet [0.424745355 0.350450241 0.224804403]
   let weights_mix [0.424745355 0.350450241 0.224804403]
   
-  if pcolor = 53 ;Coniferous
+  if landcover = 42 ;Coniferous
   [
     calc_mean_diam weights_conif 
     generate_dist
   ]
   
-  if pcolor = 57 ;Deciduous
+  if landcover = 41 ;Deciduous
   [
     calc_mean_diam weights_deci 
     generate_dist
   ]
   
-  if pcolor = 87 ;Forested Wetlands
+  if landcover = 90 ;Forested Wetlands
   [
     calc_mean_diam weights_wet 
     generate_dist
   ]
   
-  if pcolor = 58 ;Mixed
+  if landcover = 43 ;Mixed
   [
     calc_mean_diam weights_mix 
     generate_dist
@@ -455,6 +479,7 @@ to generate_dist
       set running_basal_area (running_basal_area + basal_area)      
     ]
   ]
+  set b_area running_basal_area
 end
 
 to increment_tree_bin [tree_size]
@@ -562,13 +587,21 @@ to grow-forest
   ]
   
   set bin_list matrix:get-column inter2 0
+  let counter 0
+  set b_area 0
+  repeat 12
+  [
+    let dia (counter + 1) * 2
+    set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
+    set counter counter + 1
+  ]
 end
 
 to initialize-matrix [cover_id]
   let upgrowth [0 0 0 0 0 0 0 0 0 0 0 0]
   let mortality [0 0 0 0 0 0 0 0 0 0 0 0]
   let ingrowth [0 0 0 0 0 0 0 0 0 0 0 0]
-  
+  ;set b_area 0
   if cover_id = 41 ;deciduous
   [
     let counter 0
@@ -578,6 +611,7 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0164 - 0.0001 * 0.005454 * dia ^ 2 + 0.0055 * dia - 0.0002 * dia ^ 2)
       set mortality replace-item counter mortality (0.0336 - 0.0018 * dia + 0.0001 * dia ^ 2 - 0.00002 * s-constant * dia)
       set ingrowth replace-item counter ingrowth (18.187 - 0.097 * 0.005454 * dia ^ 2)
+      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -591,6 +625,7 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0069 - 0.0001 * 0.005454 * dia ^ 2 + 0.0059 * dia - 0.0002 * dia ^ 2)
       set mortality replace-item counter mortality (0.0418 - 0.0009 * dia)
       set ingrowth replace-item counter ingrowth (7.622 - 0.059 * 0.005454 * dia ^ 2)
+      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -603,6 +638,7 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0134 - 0.0002 * 0.005454 * dia ^ 2 + 0.0051 * dia - 0.0002 * dia ^ 2 + 0.00002 * s-constant * dia)
       set mortality replace-item counter mortality (0.0417 - 0.0033 * dia + 0.0001 * dia ^ 2)
       set ingrowth replace-item counter ingrowth (4.603 - 0.035 * 0.005454 * dia ^ 2)
+      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -615,6 +651,7 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0134 - 0.0002 * 0.005454 * dia ^ 2 + 0.0051 * dia - 0.0002 * dia ^ 2 + 0.00002 * s-constant * dia)
       set mortality replace-item counter mortality (0.0417 - 0.0033 * dia + 0.0001 * dia ^ 2)
       set ingrowth replace-item counter ingrowth (4.603 - 0.035 * 0.005454 * dia ^ 2)
+      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -683,10 +720,37 @@ to go
   ask patches with [landcover != 11] [ init_herbs ]
   if (current_time mod 365) = 0
   [
-    ask patches with [landcover = 41] [ grow-forest ]
-    ask patches with [landcover = 42] [ grow-forest ]
-    ask patches with [landcover = 43] [ grow-forest ]
-    ask patches with [landcover = 90] [ grow-forest ]
+    ask patches with [landcover = 41]
+    [
+      grow-forest
+      if b_area > max_ba_41
+      [ set max_ba_41 b_area ]
+    ]
+    ask patches with [landcover = 42]
+    [
+      grow-forest
+      if b_area > max_ba_42
+      [ set max_ba_41 b_area ]
+    ]
+    ask patches with [landcover = 43]
+    [
+      grow-forest
+      if b_area > max_ba_43
+      [ set max_ba_41 b_area ]
+    ]
+    ask patches with [landcover = 90]
+    [
+      grow-forest
+      if b_area > max_ba_90
+      [ set max_ba_41 b_area ]
+    ]
+    if show-growth = true
+    [
+      ask patches with [landcover = 41] [ draw-forest min_ba_41 max_ba_41 ]
+      ask patches with [landcover = 42] [ draw-forest min_ba_41 max_ba_41 ]
+      ask patches with [landcover = 43] [ draw-forest min_ba_41 max_ba_41 ]
+      ask patches with [landcover = 90] [ draw-forest min_ba_41 max_ba_41 ]
+    ]
   ]
   tick
 end
@@ -710,6 +774,11 @@ to init_herbs
   ]
   set herb_veg herb_veg + delta_pt
   
+end
+
+to draw-forest [min_ba max_ba ]
+  let self-land landcover
+  set pcolor scale-color pcolor b_area min_ba max_ba
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -769,6 +838,28 @@ NIL
 NIL
 NIL
 NIL
+
+SWITCH
+42
+161
+170
+194
+show-growth
+show-growth
+0
+1
+-1000
+
+MONITOR
+851
+206
+1074
+251
+NIL
+[item 0 bin_list] of patch 25 35
+17
+1
+11
 
 @#$#@#$#@
 WHAT IS IT?
