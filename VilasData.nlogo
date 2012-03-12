@@ -12,13 +12,23 @@ patches-own
   ownership 
   zoning 
   mean_diam
-  bin_list
+  bin_list ;list of trees based on diameter
   dist_type ;0 if normal, 1 if neg exp
   herb_veg
   b_area
+  tree_height ;list of heights based on diameter
+  volume ;list of volume based on diameter
+  total_volume ;list of total volume per diameter
+  cut-off
+  cord ;pole timber
+  mbf ;saw timber
+  money_pole
+  money_saw
 ]
 
 globals [
+  current_profit
+  
   decid_matrix
   evergreen_matrix
   mixed_matrix
@@ -153,6 +163,9 @@ to setup
       ;print row
       ask patch col row [ set landcover templandcover set bin_list [0 0 0 0 0 0 0 0 0 0 0 0 ] ]
       ;print templandcover
+      ifelse templandcover = 42
+      [ ask patch col row [ set cut-off 8 ] ]
+      [ ask patch col row [ set cut-off 10 ] ]
       ask patch col row [select-case templandcover [
         [11 105] ;water
         [12 9.9] ;ice
@@ -255,7 +268,9 @@ to initialize-trees
     calc_mean_diam weights_mix 
     generate_dist
   ]
-  
+  set tree_height [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+  set volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+set   total_volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
 end
 
 to calc_mean_diam [weights]
@@ -553,6 +568,10 @@ end
 to grow-forest
   ;show templast
   let is_forest 0
+  set cord 0
+  set mbf 0
+  set money_pole 0
+  set money_saw 0
   let treematrix matrix:make-constant 12 1 0
   matrix:set-column treematrix 0 bin_list
   let inter2 matrix:make-constant 12 1 0
@@ -594,6 +613,86 @@ to grow-forest
     let dia (counter + 1) * 2
     set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
     set counter counter + 1
+  ]
+  
+  set counter 0
+  set cord 0
+  repeat 12
+  [
+    let T 1
+    let dia (counter + 1) * 2
+    ifelse dia > cut-off
+    [ set T 1.00001 - 9 / dia ]
+    [ set T 1.00001 - 5 / dia ]
+    if landcover = 41
+    [
+      set tree_height replace-item counter tree_height (4.5 + 6.43 * ((1 - exp(-0.24 * dia)) ^ 1.34) * (s-constant ^ 0.47) * (T ^ 0.73) * (b_area ^ 0.08))
+      set volume replace-item counter volume (2.706 + 0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    if landcover = 42
+    [
+      set tree_height replace-item counter tree_height (4.5 + 5.32 * ((1 - exp(-0.23 * dia)) ^ 1.15) * (s-constant ^ 0.54) * (T ^ 0.83) * (b_area ^ 0.06))
+      set volume replace-item counter volume (1.375 + 0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    if landcover = 43 or landcover = 90
+    [
+      set tree_height replace-item counter tree_height (4.5 + 7.19 * ((1 - exp(-0.28 * dia)) ^ 1.44) * (s-constant ^ 0.39) * (T ^ 0.83) * (b_area ^ 0.11))
+      set volume replace-item counter volume (0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    
+    set total_volume replace-item counter total_volume ((item counter bin_list) * (item counter volume))
+    
+    ifelse dia > cut-off
+    [
+      let con_fact 0
+      ifelse landcover = 42
+      [
+        set con_fact select-case-42 dia [
+          [10 0.783] ;water
+          [12 0.829] ;ice
+          [14 0.858] ;dev-op
+          [16 0.878] ;dev-low
+          [18 0.895]  ;dev-med
+          [20 0.908]  ;dev-hi
+          [22 0.917]  ;barren
+          [24 0.924]  ;forest-dec
+        ]
+      ]
+      [
+        set con_fact select-case-other dia [
+          [12 0.832] ;ice
+          [14 0.861] ;dev-op
+          [16 0.883] ;dev-low
+          [18 0.9]  ;dev-med
+          [20 0.913]  ;dev-hi
+          [22 0.924]  ;barren
+          [24 0.933]  ;forest-dec
+        ]
+      ]
+      
+      set mbf (mbf + ((item counter total_volume) * con_fact) / 12)
+    ]
+    [
+      set cord (cord + (item counter total_volume) / 128)
+    ]
+    
+    set counter counter + 1
+  ]
+  
+  if landcover = 41
+  [
+    set money_pole cord * 12
+    set money_saw mbf * 151
+  ]
+  if landcover = 42
+  [
+    set money_pole cord * 14
+    set money_saw mbf * 147
+  ]
+  if landcover = 43 or landcover = 90
+  [
+    set money_pole cord * 13
+    set money_saw mbf * 127
   ]
 end
 
@@ -729,19 +828,19 @@ to go
     ask patches with [landcover = 42]
     [
       grow-forest
-      if b_area > max_ba_42
+      if b_area > max_ba_41
       [ set max_ba_41 b_area ]
     ]
     ask patches with [landcover = 43]
     [
       grow-forest
-      if b_area > max_ba_43
+      if b_area > max_ba_41
       [ set max_ba_41 b_area ]
     ]
     ask patches with [landcover = 90]
     [
       grow-forest
-      if b_area > max_ba_90
+      if b_area > max_ba_41
       [ set max_ba_41 b_area ]
     ]
     if show-growth = true
@@ -779,6 +878,33 @@ end
 to draw-forest [min_ba max_ba ]
   let self-land landcover
   set pcolor scale-color pcolor b_area min_ba max_ba
+end
+
+to draw-cut
+  if mouse-down? and mouse-inside? [
+    ask patch mouse-xcor mouse-ycor [
+      if strategy = "clear-cut"
+      [ 
+        set bin_list [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+      ]
+    ]
+  ]
+end
+
+to-report select-case-42 [value cases]
+  foreach cases
+  [
+    ;print ?1
+    if (item 0 ?1 = value) [ report (item 1 ?1) stop ]
+  ]
+end
+
+to-report select-case-other [value cases]
+  foreach cases
+  [
+    ;print ?1
+    if (item 0 ?1 = value) [ report (item 1 ?1) stop ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -860,6 +986,16 @@ NIL
 17
 1
 11
+
+CHOOSER
+16
+259
+154
+304
+strategy
+strategy
+"clear-cut" "diameter" "bdq"
+0
 
 @#$#@#$#@
 WHAT IS IT?
