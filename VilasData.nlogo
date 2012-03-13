@@ -1163,7 +1163,7 @@ CHOOSER
 strategy
 strategy
 "clear-cut" "diameter" "bdq"
-2
+1
 
 SLIDER
 860
@@ -1174,7 +1174,7 @@ dia-cut
 dia-cut
 6
 24
-8
+20
 2
 1
 NIL
@@ -1258,6 +1258,17 @@ show-growth-herbs
 1
 1
 -1000
+
+MONITOR
+999
+127
+1107
+172
+NIL
+currentyear_saw
+17
+1
+11
 
 @#$#@#$#@
 WHAT IS IT?
