@@ -27,6 +27,11 @@ patches-own
 ]
 
 globals [
+  currentyear_saw
+  total_saw
+  currentyear_pole
+  total_pole
+  
   current_profit
   total_profit
   
@@ -142,6 +147,12 @@ to setup
   
   set total_profit 0
   set current_profit 0
+  set current_profit 0
+  
+  set total_pole 0
+  set total_saw 0
+  set currentyear_saw 0
+  set currentyear_pole 0
   
   file-open user-file
   repeat 142462
@@ -737,6 +748,10 @@ to go
   [
     set total_profit total_profit + current_profit
     set current_profit 0
+    set total_saw total_saw + currentyear_saw
+    set total_pole total_pole + currentyear_pole
+    set currentyear_saw 0
+    set currentyear_pole 0
     ask patches with [landcover = 41]
     [
       grow-forest
@@ -836,6 +851,8 @@ to draw-cut
           let old_saw money_saw
           calc_profit
           set current_profit (current_profit + (old_pole - money_pole) + (old_saw - money_saw))
+          set currentyear_pole currentyear_pole + cord
+          set currentyear_saw currentyear_saw + mbf
           show bin_list
         ]
         if strategy = "bdq"
@@ -1134,7 +1151,7 @@ SWITCH
 194
 show-growth
 show-growth
-1
+0
 1
 -1000
 
