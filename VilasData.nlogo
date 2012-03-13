@@ -28,6 +28,7 @@ patches-own
 
 globals [
   current_profit
+  total_profit
   
   decid_matrix
   evergreen_matrix
@@ -138,6 +139,9 @@ to setup
   set wet-emerg 95
   
   set s-constant 80
+  
+  set total_profit 0
+  set current_profit 0
   
   file-open user-file
   repeat 142462
@@ -606,94 +610,6 @@ to grow-forest
   ]
   
   set bin_list matrix:get-column inter2 0
-  let counter 0
-  set b_area 0
-  repeat 12
-  [
-    let dia (counter + 1) * 2
-    set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
-    set counter counter + 1
-  ]
-  
-  set counter 0
-  set cord 0
-  repeat 12
-  [
-    let T 1
-    let dia (counter + 1) * 2
-    ifelse dia > cut-off
-    [ set T 1.00001 - 9 / dia ]
-    [ set T 1.00001 - 5 / dia ]
-    if landcover = 41
-    [
-      set tree_height replace-item counter tree_height (4.5 + 6.43 * ((1 - exp(-0.24 * dia)) ^ 1.34) * (s-constant ^ 0.47) * (T ^ 0.73) * (b_area ^ 0.08))
-      set volume replace-item counter volume (2.706 + 0.002 * (dia ^ 2) * (item counter tree_height))
-    ]
-    if landcover = 42
-    [
-      set tree_height replace-item counter tree_height (4.5 + 5.32 * ((1 - exp(-0.23 * dia)) ^ 1.15) * (s-constant ^ 0.54) * (T ^ 0.83) * (b_area ^ 0.06))
-      set volume replace-item counter volume (1.375 + 0.002 * (dia ^ 2) * (item counter tree_height))
-    ]
-    if landcover = 43 or landcover = 90
-    [
-      set tree_height replace-item counter tree_height (4.5 + 7.19 * ((1 - exp(-0.28 * dia)) ^ 1.44) * (s-constant ^ 0.39) * (T ^ 0.83) * (b_area ^ 0.11))
-      set volume replace-item counter volume (0.002 * (dia ^ 2) * (item counter tree_height))
-    ]
-    
-    set total_volume replace-item counter total_volume ((item counter bin_list) * (item counter volume))
-    
-    ifelse dia > cut-off
-    [
-      let con_fact 0
-      ifelse landcover = 42
-      [
-        set con_fact select-case-42 dia [
-          [10 0.783] ;water
-          [12 0.829] ;ice
-          [14 0.858] ;dev-op
-          [16 0.878] ;dev-low
-          [18 0.895]  ;dev-med
-          [20 0.908]  ;dev-hi
-          [22 0.917]  ;barren
-          [24 0.924]  ;forest-dec
-        ]
-      ]
-      [
-        set con_fact select-case-other dia [
-          [12 0.832] ;ice
-          [14 0.861] ;dev-op
-          [16 0.883] ;dev-low
-          [18 0.9]  ;dev-med
-          [20 0.913]  ;dev-hi
-          [22 0.924]  ;barren
-          [24 0.933]  ;forest-dec
-        ]
-      ]
-      
-      set mbf (mbf + ((item counter total_volume) * con_fact) / 12)
-    ]
-    [
-      set cord (cord + (item counter total_volume) / 128)
-    ]
-    
-    set counter counter + 1
-  ]
-  
-  if landcover = 41
-  [
-    set money_pole cord * 12
-    set money_saw mbf * 151
-  ]
-  if landcover = 42
-  [
-    set money_pole cord * 14
-    set money_saw mbf * 147
-  ]
-  if landcover = 43 or landcover = 90
-  [
-    set money_pole cord * 13
-    set money_saw mbf * 127
-  ]
 end
 
 to initialize-matrix [cover_id]
@@ -819,6 +735,8 @@ to go
   ask patches with [landcover != 11] [ init_herbs ]
   if (current_time mod 365) = 0
   [
+    set total_profit total_profit + current_profit
+    set current_profit 0
     ask patches with [landcover = 41]
     [
       grow-forest
@@ -883,9 +801,143 @@ end
 to draw-cut
   if mouse-down? and mouse-inside? [
     ask patch mouse-xcor mouse-ycor [
-      if strategy = "clear-cut"
-      [ 
-        set bin_list [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+      if landcover = 41 or landcover = 42 or landcover = 43 or landcover = 90
+      [
+        calc_profit
+        if strategy = "clear-cut"
+        [ 
+          set bin_list [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+          show money_pole
+          show money_saw
+          set current_profit (current_profit + money_pole + money_saw)
+          show bin_list
+        ]
+        if strategy = "diameter"
+        [
+          let index (dia-cut / 2) - 1
+          let index-end 12 - index
+          repeat index-end
+          [
+            set bin_list replace-item index bin_list 0
+            set index index + 1
+          ]
+        
+          let old_pole money_pole
+          let old_saw money_saw
+          calc_profit
+          set current_profit (current_profit + (old_pole - money_pole) + (old_saw - money_saw))
+          show bin_list
+        ]
+        if strategy = "bdq"
+        [
+          ifelse b_area > B
+          [
+            let counter 0
+             repeat 4
+             [
+               let new_b_area 0
+               let new_bin 0
+               let inner_count 0
+               let endpoint 3
+               let startpoint 0
+               if counter = 0 [ set endpoint 2 set startpoint 0 ]
+               if counter = 1 [ set endpoint 3 set startpoint 2 ]
+               if counter = 2 [ set endpoint 2 set startpoint 5 ]
+               if counter = 3 [ set endpoint 5 set startpoint 7 ]
+               repeat endpoint
+               [
+                 set new_bin new_bin + item (startpoint + inner_count) bin_list
+                 let curr_dia (startpoint + inner_count + 1) * 2
+                 set new_b_area (new_b_area + (item (startpoint + inner_count) bin_list) * .005454 * curr_dia ^ 2)
+                 set inner_count inner_count + 1
+               ]
+               let new_bin_barea 0
+               let target_q 0
+               if q = 1.2
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.03]
+                   [1 0.19]
+                   [2 0.21]
+                   [3 0.6]
+                 ]
+               ]
+               if q = 1.3
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.05]
+                   [1 0.26]
+                   [2 0.24]
+                   [3 0.5]
+                 ]
+               ]
+               if q = 1.4
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.08]
+                   [1 0.32]
+                   [2 0.25]
+                   [3 0.43]
+                 ]
+               ]
+               if q = 1.5
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.11]
+                   [1 0.39]
+                   [2 0.26]
+                   [3 0.35]
+                 ]
+               ]
+               if q = 1.6
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.14]
+                   [1 0.45]
+                   [2 0.26]
+                   [3 0.29]
+                 ]
+               ]
+               if q = 1.7
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.19]
+                   [1 0.51]
+                   [2 0.25]
+                   [3 0.24]
+                 ]
+               ]
+               if q = 1.8
+               [
+                 set target_q select-case-bdq counter [
+                   [0 0.23]
+                   [1 0.56]
+                   [2 0.24]
+                   [3 0.2]
+                 ]
+               ]
+               let target_val (target_q * B)
+               if new_b_area > target_val
+               [
+                 let old_pole money_pole
+                 let old_saw money_saw
+                 let ratio target_val / new_b_area
+                 let bin_counter 0
+                 repeat endpoint
+                 [
+                   set bin_list (replace-item (bin_counter + startpoint) bin_list ((item (bin_counter + startpoint) bin_list) * ratio))
+                   set bin_counter bin_counter + 1
+                 ]
+                 calc_profit
+                 set current_profit (current_profit + (old_pole - money_pole) + (old_saw - money_saw))
+               ]
+               set counter counter + 1
+             ]
+          ]
+          [
+            show "b_area below B"
+          ]
+        ]
       ]
     ]
   ]
@@ -904,6 +956,106 @@ to-report select-case-other [value cases]
   [
     ;print ?1
     if (item 0 ?1 = value) [ report (item 1 ?1) stop ]
+  ]
+end
+
+to-report select-case-bdq [value cases]
+  foreach cases
+  [
+    ;print ?1
+    if (item 0 ?1 = value) [ report (item 1 ?1) stop ]
+  ]
+end
+
+to calc_profit
+  let counter 0
+  set b_area 0
+  repeat 12
+  [
+    let dia (counter + 1) * 2
+    set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
+    set counter counter + 1
+  ]
+  
+  set counter 2
+  set cord 0
+  set mbf 0
+  repeat 10
+  [
+    let T 1
+    let dia (counter + 1) * 2
+    ifelse dia > cut-off
+    [ set T (1.00001 - (9 / dia)) ]
+    [ set T (1.00001 - (5 / dia)) ]
+    if landcover = 41
+    [
+      set tree_height replace-item counter tree_height (4.5 + 6.43 * ((1 - exp(-0.24 * dia)) ^ 1.34) * (s-constant ^ 0.47) * (T ^ 0.73) * (b_area ^ 0.08))
+      set volume replace-item counter volume (2.706 + 0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    if landcover = 42
+    [
+      set tree_height replace-item counter tree_height (4.5 + 5.32 * ((1 - exp(-0.23 * dia)) ^ 1.15) * (s-constant ^ 0.54) * (T ^ 0.83) * (b_area ^ 0.06))
+      set volume replace-item counter volume (1.375 + 0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    if landcover = 43 or landcover = 90
+    [
+      set tree_height replace-item counter tree_height (4.5 + 7.19 * ((1 - exp(-0.28 * dia)) ^ 1.44) * (s-constant ^ 0.39) * (T ^ 0.83) * (b_area ^ 0.11))
+      set volume replace-item counter volume (0.002 * (dia ^ 2) * (item counter tree_height))
+    ]
+    
+    set total_volume replace-item counter total_volume ((item counter bin_list) * (item counter volume))
+    
+    ifelse dia > cut-off
+    [
+      let con_fact 0
+      ifelse landcover = 42
+      [
+        set con_fact select-case-42 dia [
+          [10 0.783] ;water
+          [12 0.829] ;ice
+          [14 0.858] ;dev-op
+          [16 0.878] ;dev-low
+          [18 0.895]  ;dev-med
+          [20 0.908]  ;dev-hi
+          [22 0.917]  ;barren
+          [24 0.924]  ;forest-dec
+        ]
+      ]
+      [
+        set con_fact select-case-other dia [
+          [12 0.832] ;ice
+          [14 0.861] ;dev-op
+          [16 0.883] ;dev-low
+          [18 0.9]  ;dev-med
+          [20 0.913]  ;dev-hi
+          [22 0.924]  ;barren
+          [24 0.933]  ;forest-dec
+        ]
+      ]
+      
+      set mbf (mbf + ((item counter total_volume) * con_fact) / 12)
+    ]
+    [
+      set cord (cord + (item counter total_volume) / 128)
+    ]
+    
+    set counter counter + 1
+  ]
+  
+  if landcover = 41
+  [
+    set money_pole cord * 12
+    set money_saw mbf * 151
+  ]
+  if landcover = 42
+  [
+    set money_pole cord * 14
+    set money_saw mbf * 147
+  ]
+  if landcover = 43 or landcover = 90
+  [
+    set money_pole cord * 13
+    set money_saw mbf * 127
   ]
 end
 @#$#@#$#@
@@ -952,7 +1104,7 @@ NIL
 BUTTON
 33
 85
-130
+131
 118
 NIL
 go
@@ -972,20 +1124,9 @@ SWITCH
 194
 show-growth
 show-growth
-0
+1
 1
 -1000
-
-MONITOR
-851
-206
-1074
-251
-NIL
-[item 0 bin_list] of patch 25 35
-17
-1
-11
 
 CHOOSER
 16
@@ -995,7 +1136,90 @@ CHOOSER
 strategy
 strategy
 "clear-cut" "diameter" "bdq"
-0
+2
+
+SLIDER
+860
+50
+1032
+83
+dia-cut
+dia-cut
+6
+24
+8
+2
+1
+NIL
+HORIZONTAL
+
+MONITOR
+871
+123
+961
+168
+NIL
+current_profit
+17
+1
+11
+
+MONITOR
+861
+334
+936
+379
+NIL
+total_profit
+17
+1
+11
+
+BUTTON
+44
+362
+125
+395
+NIL
+draw-cut
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+
+SLIDER
+864
+179
+1036
+212
+q
+q
+1.2
+1.8
+1.2
+.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+866
+224
+1038
+257
+B
+B
+60
+140
+60
+10
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 WHAT IS IT?
