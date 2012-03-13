@@ -761,7 +761,7 @@ to go
       if b_area > max_ba_41
       [ set max_ba_41 b_area ]
     ]
-    if show-growth = true
+    if show-growth = true and show-growth-herbs = false
     [
       ask patches with [landcover = 41] [ draw-forest min_ba_41 max_ba_41 ]
       ask patches with [landcover = 42] [ draw-forest min_ba_41 max_ba_41 ]
@@ -774,9 +774,14 @@ end
 
 to init_herbs
   let doy ticks mod 365
-  let r 0.2
+  let r_grow 0.2
+  let r_die 0.1
   let K 5
   ;initialization / budding
+  if landcover = 41 or landcover = 42 or landcover = 43 or landcover = 90
+  [
+    set K 3
+  ]
   if doy = 1 [set herb_veg herb_veg + 1]
   
   let delta_pt 0
@@ -784,12 +789,17 @@ to init_herbs
   ;calculate delta_pt
   ifelse doy < 175
   [
-    set delta_pt r * herb_veg * (1 - (herb_veg / K))
+    set delta_pt r_grow * herb_veg * (1 - (herb_veg / K))
   ]
   [
-    set delta_pt (-1) * r * herb_veg 
+    set delta_pt (-1) * r_die * herb_veg 
   ]
   set herb_veg herb_veg + delta_pt
+  
+  if show-growth-herbs = true and show-growth = false
+  [
+    set pcolor scale-color green herb_veg 6 0
+  ]
   
 end
 
@@ -1220,6 +1230,17 @@ B
 1
 NIL
 HORIZONTAL
+
+SWITCH
+867
+273
+1031
+306
+show-growth-herbs
+show-growth-herbs
+1
+1
+-1000
 
 @#$#@#$#@
 WHAT IS IT?
