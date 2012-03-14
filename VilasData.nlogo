@@ -100,6 +100,7 @@ globals [
 
 to setup
   clear-patches
+  ca
   reset-ticks
   set water-color 105
   set ice-color 9.9
@@ -1085,11 +1086,30 @@ to calc_profit
     set money_saw mbf * 127
   ]
 end
+
+to make-movie
+  user-message "First, save your new movie file (choose a name ending with .mov)"
+  let path user-new-file
+  if not is-string? path [ stop ]  ;; stop if user canceled
+
+  ;; run the model
+  setup
+  movie-start path
+  movie-grab-view
+  while [ ticks < (365 * 10) ]
+    [ go
+      movie-grab-view ]
+
+  ;; export the movie
+  movie-close
+  user-message (word "Exported movie to " path)
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
-171
+211
 10
-809
+849
 669
 51
 51
@@ -1111,11 +1131,12 @@ GRAPHICS-WINDOW
 0
 1
 ticks
+30.0
 
 BUTTON
 20
 21
-83
+93
 54
 NIL
 setup
@@ -1127,12 +1148,13 @@ NIL
 NIL
 NIL
 NIL
+1
 
 BUTTON
-19
-55
-117
-88
+101
+21
+177
+54
 NIL
 go
 T
@@ -1143,12 +1165,13 @@ NIL
 NIL
 NIL
 NIL
+1
 
 SWITCH
-42
-161
-170
-194
+21
+63
+177
+96
 show-growth
 show-growth
 0
@@ -1156,20 +1179,20 @@ show-growth
 -1000
 
 CHOOSER
-16
-259
-154
-304
+21
+170
+176
+215
 strategy
 strategy
 "clear-cut" "diameter" "bdq"
 1
 
 SLIDER
-860
-50
-1032
-83
+22
+300
+179
+333
 dia-cut
 dia-cut
 6
@@ -1181,10 +1204,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-871
-123
-961
-168
+989
+14
+1087
+59
 NIL
 current_profit
 17
@@ -1192,10 +1215,10 @@ current_profit
 11
 
 MONITOR
-861
-334
-936
-379
+990
+68
+1086
+113
 NIL
 total_profit
 17
@@ -1203,10 +1226,10 @@ total_profit
 11
 
 BUTTON
-44
-362
-125
-395
+21
+225
+176
+258
 NIL
 draw-cut
 T
@@ -1217,12 +1240,13 @@ NIL
 NIL
 NIL
 NIL
+1
 
 SLIDER
-864
-179
-1036
-212
+21
+338
+180
+371
 q
 q
 1.2
@@ -1234,10 +1258,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-866
-224
-1038
-257
+22
+376
+180
+409
 B
 B
 60
@@ -1249,10 +1273,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-867
-273
-1031
-306
+21
+104
+177
+137
 show-growth-herbs
 show-growth-herbs
 1
@@ -1260,59 +1284,115 @@ show-growth-herbs
 -1000
 
 MONITOR
-999
-127
-1107
-172
+992
+119
+1087
+164
 NIL
 currentyear_saw
 17
 1
 11
 
+BUTTON
+21
+512
+169
+545
+NIL
+make-movie
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+863
+13
+958
+58
+DOY
+ticks mod 365
+17
+1
+11
+
+PLOT
+866
+189
+1086
+339
+herbacious vegetation
+DOY
+Average-amount
+0.0
+10.0
+0.0
+5.0
+true
+false
+"set-plot-y-range  0 5" ""
+PENS
+"Deciduous" 1.0 0 -16777216 true "" "plot mean [herb_veg] of patches with [landcover != 11]"
+
+PLOT
+866
+361
+1084
+511
+BA
+diameter
+Frequency
+0.0
+200.0
+0.0
+100.0
+true
+false
+"set-histogram-num-bars 7" ""
+PENS
+"BA" 1.0 0 -16777216 true "" "histogram [b_area] of patches with [b_area != 0]"
+
 @#$#@#$#@
-WHAT IS IT?
------------
+## WHAT IS IT?
+
 This section could give a general understanding of what the model is trying to show or explain.
 
+## HOW IT WORKS
 
-HOW IT WORKS
-------------
 This section could explain what rules the agents use to create the overall behavior of the model.
 
+## HOW TO USE IT
 
-HOW TO USE IT
--------------
 This section could explain how to use the model, including a description of each of the items in the interface tab.
 
+## THINGS TO NOTICE
 
-THINGS TO NOTICE
-----------------
 This section could give some ideas of things for the user to notice while running the model.
 
+## THINGS TO TRY
 
-THINGS TO TRY
--------------
 This section could give some ideas of things for the user to try to do (move sliders, switches, etc.) with the model.
 
+## EXTENDING THE MODEL
 
-EXTENDING THE MODEL
--------------------
 This section could give some ideas of things to add or change in the procedures tab to make the model more complicated, detailed, accurate, etc.
 
+## NETLOGO FEATURES
 
-NETLOGO FEATURES
-----------------
 This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
 
+## RELATED MODELS
 
-RELATED MODELS
---------------
 This section could give the names of models in the NetLogo Models Library or elsewhere which are of related interest.
 
+## CREDITS AND REFERENCES
 
-CREDITS AND REFERENCES
-----------------------
 This section could contain a reference to the model's URL on the web if it has one, as well as any other necessary credits or references.
 @#$#@#$#@
 default
@@ -1607,7 +1687,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 4.1.3
+NetLogo 5.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
