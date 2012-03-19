@@ -1,5 +1,10 @@
 ;Each row seems to be 1351 units wide. Starting at 105,500 (y,x), 142462
 extensions [matrix]
+
+breed [birds bird]
+
+birds-own [energy lifetime]
+
 patches-own
 [
   landcover
@@ -25,6 +30,7 @@ patches-own
   mbf ;saw timber
   money_pole
   money_saw
+  bird-range
 ]
 
 globals [
@@ -229,6 +235,16 @@ to setup
       let skip12 file-read-characters 1
       ask patch col row [ set zoning file-read ]
       ask patch col row [initialize-trees]
+      ask patch col row
+      [
+        ifelse pxcor >= 0 and pxcor < 10 and pycor >= 40 and pycor < 50
+        [
+          set bird-range true
+        ]
+        [
+          set bird-range false
+        ]
+      ]
     ]
     repeat 1252 [let skipline file-read-line]
   ]
@@ -256,7 +272,20 @@ to setup
   [
     set herb_veg 1
     set bug_pop 1
-  ] 
+  ]
+  
+  create-birds num-birds
+  [
+    set shape "bird side"
+    set size .5
+    set color red
+    let xcoord random 10
+    let ycoord random 10
+    set ycoord ycoord + 40
+    setxy xcoord ycoord
+    set energy random 50
+    set lifetime random 700
+  ]
 end
 
 to select-case [value cases]
@@ -797,6 +826,14 @@ to go
       ask patches with [landcover = 90] [ draw-forest min_ba_41 max_ba_41 ]
     ]
   ]
+  
+  ask birds
+  [
+    bird-move
+    bird-eat
+    bird-repro
+    bird-die
+  ]
   tick
 end
 
@@ -1135,6 +1172,51 @@ to make-movie
   movie-close
   user-message (word "Exported movie to " path)
 end
+
+to bird-move
+  move-to one-of patches with [bird-range = true] in-radius 2.1
+  set energy energy - .5
+end
+
+to bird-eat
+  let want 0.00000018
+  ifelse bug_pop > want
+  [
+    ask patch-here [set bug_pop bug_pop - want]
+    set energy energy + 1.5
+  ]
+  [
+    let ratio bug_pop / want
+    set energy energy + 1.5 * ratio
+    ask patch-here [set bug_pop 0]
+  ]
+  
+  set lifetime lifetime - 1
+end
+
+to bird-repro
+  let date ticks mod 365
+  if date > 100 and date < 200
+  [
+    if energy >= 140
+    [
+      hatch ((random 2) + 1)
+      [
+        set energy random 50
+        set lifetime random 700
+      ]
+      
+      set energy 50
+    ]
+  ]
+end
+
+to bird-die
+  if lifetime <= 0 or energy <= 0
+  [
+    die
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 211
@@ -1204,7 +1286,7 @@ SWITCH
 96
 show-growth
 show-growth
-0
+1
 1
 -1000
 
@@ -1353,10 +1435,10 @@ ticks mod 365
 11
 
 PLOT
-866
-189
-1086
-339
+865
+181
+1085
+331
 herbacious vegetation
 DOY
 Average-amount
@@ -1376,9 +1458,9 @@ PLOT
 361
 1084
 511
-BA
-diameter
-Frequency
+Birds
+Time
+Number
 0.0
 200.0
 0.0
@@ -1387,7 +1469,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" ""
+"default" 1.0 0 -16777216 true "" "plot count birds"
 
 SLIDER
 862
@@ -1449,6 +1531,32 @@ bug_die
 NIL
 HORIZONTAL
 
+SLIDER
+25
+437
+197
+470
+num-birds
+num-birds
+100
+1000
+150
+10
+1
+NIL
+HORIZONTAL
+
+MONITOR
+867
+85
+924
+130
+Birds
+count birds
+17
+1
+11
+
 @#$#@#$#@
 ## ## WHAT IS IT?
 
@@ -1500,6 +1608,12 @@ arrow
 true
 0
 Polygon -7500403 true true 150 0 0 150 105 150 105 293 195 293 195 150 300 150
+
+bird side
+false
+0
+Polygon -7500403 true true 0 120 45 90 75 90 105 120 150 120 240 135 285 120 285 135 300 150 240 150 195 165 255 195 210 195 150 210 90 195 60 180 45 135
+Circle -16777216 true false 38 98 14
 
 box
 false
