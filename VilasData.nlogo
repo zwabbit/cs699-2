@@ -1198,7 +1198,7 @@ to bird-repro
   let date ticks mod 365
   if date > 100 and date < 200
   [
-    if energy >= 140
+    if energy >= 160
     [
       hatch ((random 2) + 1)
       [
