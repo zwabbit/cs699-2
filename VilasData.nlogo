@@ -1,20 +1,21 @@
-;Each row seems to be 1351 units wide.  Starting at 105,500 (y,x), 142462
+;Each row seems to be 1351 units wide. Starting at 105,500 (y,x), 142462
 extensions [matrix]
 patches-own
 [
-  landcover 
-  canopy2k1 
-  house1996 
-  house2k5 
+  landcover
+  canopy2k1
+  house1996
+  house2k5
   frontage
-  lakesize 
-  road soil 
-  ownership 
-  zoning 
+  lakesize
+  road soil
+  ownership
+  zoning
   mean_diam
   bin_list ;list of trees based on diameter
   dist_type ;0 if normal, 1 if neg exp
   herb_veg
+  bug_pop
   b_area
   tree_height ;list of heights based on diameter
   volume ;list of volume based on diameter
@@ -100,7 +101,11 @@ globals [
 
 to setup
   clear-patches
-  ca
+  ;; (for this model to work with NetLogo's new plotting features,
+  ;; __clear-all-and-reset-ticks should be replaced with clear-all at
+  ;; the beginning of your setup procedure and reset-ticks at the end
+  ;; of the procedure.)
+  __clear-all-and-reset-ticks
   reset-ticks
   set water-color 105
   set ice-color 9.9
@@ -187,22 +192,22 @@ to setup
         [12 9.9] ;ice
         [21 137] ;dev-op
         [22 134] ;dev-low
-        [23 15]  ;dev-med
-        [24 13]  ;dev-hi
-        [31 38]  ;barren
-        [41 57]  ;forest-dec
-        [42 53]  ;forest-ever
-        [43 58]  ;forest-mix
-        [51 25]  ;shrub-dwarf
-        [52 27]  ;shrub
-        [71 47]  ;herb
-        [72 44]  ;herb-seg
-        [73 43]  ;herb-lic
-        [74 85]  ;herb-moss
-        [81 45]  ;plant-past
-        [82 22]  ;plant-crop
-        [90 87]  ;wet-wood
-        [95 94]  ;wet-herb
+        [23 15] ;dev-med
+        [24 13] ;dev-hi
+        [31 38] ;barren
+        [41 57] ;forest-dec
+        [42 53] ;forest-ever
+        [43 58] ;forest-mix
+        [51 25] ;shrub-dwarf
+        [52 27] ;shrub
+        [71 47] ;herb
+        [72 44] ;herb-seg
+        [73 43] ;herb-lic
+        [74 85] ;herb-moss
+        [81 45] ;plant-past
+        [82 22] ;plant-crop
+        [90 87] ;wet-wood
+        [95 94] ;wet-herb
         [255 125]
       ]]
       let skip4 file-read-characters 1
@@ -226,7 +231,7 @@ to setup
       ask patch col row [initialize-trees]
     ]
     repeat 1252 [let skipline file-read-line]
-  ]  
+  ]
   file-close
   initialize-matrix 41
   initialize-matrix 42
@@ -245,6 +250,13 @@ to setup
   
   ;set min_ba_90 [b_area] of min-one-of (patches with [landcover = 90]) [b_area]
   ;set max_ba_90 [b_area] of max-one-of (patches with [landcover = 90]) [b_area]
+  
+  ;initialize stuff
+  ask patches with [landcover != 11] 
+  [
+    set herb_veg 1
+    set bug_pop 1
+  ] 
 end
 
 to select-case [value cases]
@@ -263,30 +275,30 @@ to initialize-trees
   
   if landcover = 42 ;Coniferous
   [
-    calc_mean_diam weights_conif 
+    calc_mean_diam weights_conif
     generate_dist
   ]
   
   if landcover = 41 ;Deciduous
   [
-    calc_mean_diam weights_deci 
+    calc_mean_diam weights_deci
     generate_dist
   ]
   
   if landcover = 90 ;Forested Wetlands
   [
-    calc_mean_diam weights_wet 
+    calc_mean_diam weights_wet
     generate_dist
   ]
   
   if landcover = 43 ;Mixed
   [
-    calc_mean_diam weights_mix 
+    calc_mean_diam weights_mix
     generate_dist
   ]
   set tree_height [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
   set volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
-set   total_volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+set total_volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
 end
 
 to calc_mean_diam [weights]
@@ -296,11 +308,11 @@ to calc_mean_diam [weights]
     [
       ;call subroutine
       calc_mean_diam_sub
-    ] 
+    ]
     if rand > item 0 weights and rand < (item 0 weights + item 1 weights)
     [
       set mean_diam item 1 treesize
-    ] 
+    ]
     if rand > (item 0 weights + item 1 weights)
     [
       set mean_diam item 2 treesize
@@ -312,18 +324,18 @@ to calc_mean_diam_sub
   let treesize [0 2 4 6 8 10 15 20]
   let distr [0.125 0.25 0.375 0.5 0.625 0.75 0.875]
   ;uniform distribution i.e Pr[mean_diam = treesize(i)] = 1/8 or 0.125
-  if rand < item 0 distr 
+  if rand < item 0 distr
   [
     set mean_diam item 0 treesize
   ]
   if rand > item 0 distr and rand < item 1 distr
   [
     set mean_diam item 1 treesize
-  ] 
+  ]
   if rand > item 1 distr and rand < item 2 distr
   [
     set mean_diam item 2 treesize
-  ] 
+  ]
   if rand > item 2 distr and rand < item 3 distr
   [
     set mean_diam item 3 treesize
@@ -340,7 +352,7 @@ to calc_mean_diam_sub
   [
     set mean_diam item 6 treesize
   ]
-  if rand > item 6 distr 
+  if rand > item 6 distr
   [
     set mean_diam item 7 treesize
   ]
@@ -353,15 +365,15 @@ to generate_dist
   let rand random-float 1
   ifelse rand < 0.5
   [
-    ;normal diameter distribution 
-    set dist_type 0  
+    ;normal diameter distribution
+    set dist_type 0
     ;calculate coefficient of variation of a beta distribution
     let alpha 2
     let beta 5
     ;generate a random number from a beta distribution given a gamma distribution
     let x random-gamma alpha 1
-    let y random-gamma beta 1 
-    let rand_beta x / (x + y) 
+    let y random-gamma beta 1
+    let rand_beta x / (x + y)
     let cv rand_beta
     let sd cv * mean_diam
     while[running_basal_area < target_basal_area]
@@ -379,7 +391,7 @@ to generate_dist
     ;negative exponential diameter distribution
     set dist_type 1
     ;calculate probabilities
-    let lamda  1 / mean_diam
+    let lamda 1 / mean_diam
     let fds [0 0 0 0 0 0 0 0 0 0 0 0]
     set fds replace-item 0 fds calc_fd lamda 1.5
     set fds replace-item 1 fds calc_fd lamda 4
@@ -408,7 +420,7 @@ to generate_dist
     set distr replace-item 8 distr (item 8 fds / fd_sum)
     set distr replace-item 9 distr (item 9 fds / fd_sum)
     set distr replace-item 10 distr (item 10 fds / fd_sum)
-    set distr replace-item 11 distr (item 11 fds / fd_sum) 
+    set distr replace-item 11 distr (item 11 fds / fd_sum)
     
     let prob [0 0 0 0 0 0 0 0 0 0 0]
     set prob replace-item 0 prob item 0 distr
@@ -417,15 +429,15 @@ to generate_dist
     set prob replace-item 3 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr)
     set prob replace-item 4 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr)
     set prob replace-item 5 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr)
-    set prob replace-item 6 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+    set prob replace-item 6 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr
       + item 6 distr)
-    set prob replace-item 7 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+    set prob replace-item 7 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr
       + item 6 distr + item 7 distr)
-    set prob replace-item 8 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+    set prob replace-item 8 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr
       + item 6 distr + item 7 distr + item 8 distr)
-    set prob replace-item 9 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+    set prob replace-item 9 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr
       + item 6 distr + item 7 distr + item 8 distr + item 9 distr)
-    set prob replace-item 10 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr 
+    set prob replace-item 10 prob (item 0 distr + item 1 distr + item 2 distr + item 3 distr + item 4 distr + item 5 distr
       + item 6 distr + item 7 distr + item 8 distr + item 9 distr + item 10 distr)
         
     ;loop
@@ -505,9 +517,9 @@ to generate_dist
         set bin_list replace-item 11 bin_list ((item 11 bin_list) + 1)
         ;set bin_24 bin_24 + 1
         set tree_size 24
-      ]   
+      ]
       let basal_area 0.005454 * (tree_size ^ 2)
-      set running_basal_area (running_basal_area + basal_area)      
+      set running_basal_area (running_basal_area + basal_area)
     ]
   ]
   set b_area running_basal_area
@@ -518,7 +530,7 @@ to increment_tree_bin [tree_size]
   if tree_size < item 0 bins
   [
     set bin_list replace-item 0 bin_list ((item 0 bin_list) + 1)
-    ;set bin_2 bin_2 + 1 
+    ;set bin_2 bin_2 + 1
   ]
   if tree_size >= item 0 bins and tree_size < item 1 bins
   [
@@ -744,7 +756,7 @@ end
 
 to go
   let current_time ticks
-  ask patches with [landcover != 11] [ init_herbs ]
+  ask patches with [landcover != 11] [ init_herbs init_bugs ]
   if (current_time mod 365) = 0
   [
     set total_profit total_profit + current_profit
@@ -790,34 +802,53 @@ end
 
 to init_herbs
   let doy ticks mod 365
-  let r_grow 0.2
-  let r_die 0.1
-  let K 5
+  ;let r_p 0.5
+  ;let r_die 0.1
+  ;let K 5
   ;initialization / budding
-  if landcover = 41 or landcover = 42 or landcover = 43 or landcover = 90
-  [
-    set K 3
-  ]
-  if doy = 1 [set herb_veg herb_veg + 1]
+  ;if landcover = 41 or landcover = 42 or landcover = 43 or landcover = 90
+  ;[
+    ;set K 3
+  ;]
+  ;if doy = 1 [set herb_veg herb_veg + 1]
   
   let delta_pt 0
   
   ;calculate delta_pt
-  ifelse doy < 175
-  [
-    set delta_pt r_grow * herb_veg * (1 - (herb_veg / K))
-  ]
-  [
-    set delta_pt (-1) * r_die * herb_veg 
-  ]
+  ;ifelse doy < 175
+  ;[
+    ;set delta_pt r_p * herb_veg * (1 - (herb_veg / K))
+  ;]
+  ;[
+    ;set delta_pt (-1) * r_p * herb_veg
+  ;]
+  
+  ;New population model
+  set delta_pt (herb_veg * r_p) - (herb_veg * bug_pop * plant_eating)
+  
   set herb_veg herb_veg + delta_pt
   
   if show-growth-herbs = true and show-growth = false
   [
     set pcolor scale-color green herb_veg 6 0
   ]
+end
+
+to init_bugs
+  let doy ticks mod 365
+  ;let r_h 0.1
+  
+  let delta_ht 0
+  
+  ;if doy = 1 [set bug_pop bug_pop + 1]
+  
+  ;calcualte delta_ht
+  set delta_ht (bug_pop * herb_veg * r_h) - (bug_pop * bug_die)
+  
+  set bug_pop bug_pop + delta_ht
   
 end
+
 
 to draw-forest [min_ba max_ba ]
   let self-land landcover
@@ -831,7 +862,7 @@ to draw-cut
       [
         calc_profit
         if strategy = "clear-cut"
-        [ 
+        [
           set bin_list [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
           show money_pole
           show money_saw
@@ -1043,10 +1074,10 @@ to calc_profit
           [12 0.829] ;ice
           [14 0.858] ;dev-op
           [16 0.878] ;dev-low
-          [18 0.895]  ;dev-med
-          [20 0.908]  ;dev-hi
-          [22 0.917]  ;barren
-          [24 0.924]  ;forest-dec
+          [18 0.895] ;dev-med
+          [20 0.908] ;dev-hi
+          [22 0.917] ;barren
+          [24 0.924] ;forest-dec
         ]
       ]
       [
@@ -1054,10 +1085,10 @@ to calc_profit
           [12 0.832] ;ice
           [14 0.861] ;dev-op
           [16 0.883] ;dev-low
-          [18 0.9]  ;dev-med
-          [20 0.913]  ;dev-hi
-          [22 0.924]  ;barren
-          [24 0.933]  ;forest-dec
+          [18 0.9] ;dev-med
+          [20 0.913] ;dev-hi
+          [22 0.924] ;barren
+          [24 0.933] ;forest-dec
         ]
       ]
       
@@ -1090,7 +1121,7 @@ end
 to make-movie
   user-message "First, save your new movie file (choose a name ending with .mov)"
   let path user-new-file
-  if not is-string? path [ stop ]  ;; stop if user canceled
+  if not is-string? path [ stop ] ;; stop if user canceled
 
   ;; run the model
   setup
@@ -1104,7 +1135,6 @@ to make-movie
   movie-close
   user-message (word "Exported movie to " path)
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 211
@@ -1186,7 +1216,7 @@ CHOOSER
 strategy
 strategy
 "clear-cut" "diameter" "bdq"
-1
+0
 
 SLIDER
 22
@@ -1336,9 +1366,10 @@ Average-amount
 5.0
 true
 false
-"set-plot-y-range  0 5" ""
+"" ""
 PENS
-"Deciduous" 1.0 0 -16777216 true "" "plot mean [herb_veg] of patches with [landcover != 11]"
+"bug" 1.0 0 -16777216 true "" "plot mean [bug_pop] of patches with [landcover != 11]"
+"herb" 1.0 0 -7500403 true "" "plot mean [herb_veg] of patches with [landcover != 11]"
 
 PLOT
 866
@@ -1354,44 +1385,104 @@ Frequency
 100.0
 true
 false
-"set-histogram-num-bars 7" ""
+"" ""
 PENS
-"BA" 1.0 0 -16777216 true "" "histogram [b_area] of patches with [b_area != 0]"
+"default" 1.0 0 -16777216 true "" ""
+
+SLIDER
+862
+534
+1034
+567
+r_p
+r_p
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+864
+576
+1036
+609
+r_h
+r_h
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+867
+619
+1039
+652
+plant_eating
+plant_eating
+0
+1
+0.3
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+869
+664
+1041
+697
+bug_die
+bug_die
+0
+1
+0.3
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
-## WHAT IS IT?
+## ## WHAT IS IT?
 
 This section could give a general understanding of what the model is trying to show or explain.
 
-## HOW IT WORKS
+## ## HOW IT WORKS
 
 This section could explain what rules the agents use to create the overall behavior of the model.
 
-## HOW TO USE IT
+## ## HOW TO USE IT
 
 This section could explain how to use the model, including a description of each of the items in the interface tab.
 
-## THINGS TO NOTICE
+## ## THINGS TO NOTICE
 
 This section could give some ideas of things for the user to notice while running the model.
 
-## THINGS TO TRY
+## ## THINGS TO TRY
 
 This section could give some ideas of things for the user to try to do (move sliders, switches, etc.) with the model.
 
-## EXTENDING THE MODEL
+## ## EXTENDING THE MODEL
 
 This section could give some ideas of things to add or change in the procedures tab to make the model more complicated, detailed, accurate, etc.
 
-## NETLOGO FEATURES
+## ## NETLOGO FEATURES
 
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
+This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab. It might also point out places where workarounds were needed because of missing features.
 
-## RELATED MODELS
+## ## RELATED MODELS
 
 This section could give the names of models in the NetLogo Models Library or elsewhere which are of related interest.
 
-## CREDITS AND REFERENCES
+## ## CREDITS AND REFERENCES
 
 This section could contain a reference to the model's URL on the web if it has one, as well as any other necessary credits or references.
 @#$#@#$#@
