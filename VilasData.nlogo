@@ -31,6 +31,7 @@ patches-own
   money_pole
   money_saw
   bird-range
+  bird-nests
 ]
 
 globals [
@@ -235,16 +236,33 @@ to setup
       let skip12 file-read-characters 1
       ask patch col row [ set zoning file-read ]
       ask patch col row [initialize-trees]
-      ask patch col row
-      [
-        ifelse pxcor >= 0 and pxcor < 10 and pycor >= 40 and pycor < 50
-        [
-          set bird-range true
+      let ratio .5
+
+       if templandcover = 42
+       [
+         ;11, 90, 95
+         ask patch col row
+         [ifelse any? neighbors with [landcover = 11] or any? neighbors with [landcover = 90] or any? neighbors with [landcover = 95]
+         [
+           set ratio 1
+         ]
+         [
+           if any? neighbors in-radius 2 with [landcover = 11] or any? neighbors in-radius 2 with [landcover = 90] or any? neighbors in-radius 2 with [landcover = 95]
+           [
+             set ratio .75
+           ]
+         ]]
+          
+          create-birds (num-birds * ratio)
+          [
+            set shape "bird side"
+            set size .5
+            set color red
+            setxy col row
+            set energy random 50
+            set lifetime random 1826
+          ]
         ]
-        [
-          set bird-range false
-        ]
-      ]
     ]
     repeat 1252 [let skipline file-read-line]
   ]
@@ -272,19 +290,6 @@ to setup
   [
     set herb_veg 1
     set bug_pop 1
-  ]
-  
-  create-birds num-birds
-  [
-    set shape "bird side"
-    set size .5
-    set color red
-    let xcoord random 10
-    let ycoord random 10
-    set ycoord ycoord + 40
-    setxy xcoord ycoord
-    set energy random 50
-    set lifetime random 700
   ]
 end
 
@@ -663,6 +668,15 @@ to grow-forest
   ]
   
   set bin_list matrix:get-column inter2 0
+  
+  let counter 0
+  set b_area 0
+  repeat 12
+  [
+    let dia (counter + 1) * 2
+    set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
+    set counter counter + 1
+  ]
 end
 
 to initialize-matrix [cover_id]
@@ -785,8 +799,9 @@ end
 
 to go
   let current_time ticks
+  let current_mod current_time mod 365
   ask patches with [landcover != 11] [ init_herbs init_bugs ]
-  if (current_time mod 365) = 0
+  if current_mod = 0
   [
     set total_profit total_profit + current_profit
     set current_profit 0
@@ -827,12 +842,44 @@ to go
     ]
   ]
   
+  if current_mod = 182
+  [
+    ask patches with [landcover = 42]
+    [
+      let counter 4
+      repeat 8
+      [
+        set bird-nests bird-nests + item counter bin_list
+        set counter counter + 1
+      ]
+      set bird-nests (bird-nests / 10)
+    ]
+  ]
+  
   ask birds
   [
-    bird-move
     bird-eat
-    bird-repro
+    set lifetime lifetime - 1
     bird-die
+    if current_mod < 152 or current_mod > 244
+    [
+      stop
+    ]
+    if current_mod = 152
+    [
+      show-turtle
+    ]
+    if current_mod = 182
+    [
+      bird-repro
+    ]
+    
+    if current_mod = 243
+    [
+      hide-turtle
+      if energy < 110
+      [ die ]
+    ]
   ]
   tick
 end
@@ -1065,13 +1112,6 @@ end
 
 to calc_profit
   let counter 0
-  set b_area 0
-  repeat 12
-  [
-    let dia (counter + 1) * 2
-    set b_area (b_area + (0.005454 * dia ^ 2) * (item counter bin_list))
-    set counter counter + 1
-  ]
   
   set counter 2
   set cord 0
@@ -1163,7 +1203,8 @@ to make-movie
   ;; run the model
   setup
   movie-start path
-  movie-grab-view
+  ;movie-grab-view
+  movie-grab-interface
   while [ ticks < (365 * 10) ]
     [ go
       movie-grab-view ]
@@ -1174,12 +1215,12 @@ to make-movie
 end
 
 to bird-move
-  move-to one-of patches with [bird-range = true] in-radius 2.1
+  move-to one-of patches with [landcover = 42] in-radius 1.1
   set energy energy - .5
 end
 
 to bird-eat
-  let want 0.00000018
+  let want 0.0000000028125
   ifelse bug_pop > want
   [
     ask patch-here [set bug_pop bug_pop - want]
@@ -1189,26 +1230,21 @@ to bird-eat
     let ratio bug_pop / want
     set energy energy + 1.5 * ratio
     ask patch-here [set bug_pop 0]
+    bird-move
   ]
-  
-  set lifetime lifetime - 1
 end
 
 to bird-repro
-  let date ticks mod 365
-  if date > 100 and date < 200
+  if energy >= 70 and ([bird-nests] of patch-here) > 0
   [
-    if energy >= 160
+    hatch ((random 2) + 1)
     [
-      hatch ((random 2) + 1)
-      [
-        set energy random 50
-        set lifetime random 700
-      ]
-      
-      set energy 50
-    ]
+      set energy random 50
+      set lifetime random 700
+    ]  
+    set energy 50
   ]
+  ask patch-here [ set bird-nests bird-nests - 1]
 end
 
 to bird-die
@@ -1538,10 +1574,10 @@ SLIDER
 470
 num-birds
 num-birds
-100
-1000
-150
-10
+0
+67
+0
+1
 1
 NIL
 HORIZONTAL
