@@ -841,8 +841,8 @@ to go
       ask patches with [landcover = 90] [ draw-forest min_ba_41 max_ba_41 ]
     ]
   ]
-  
-  if current_mod = 182
+  ; change the nest amount by adjusting a range for current mod
+  if current_mod >= 182 and current_mod <= 186
   [
     ask patches with [landcover = 42]
     [
@@ -869,15 +869,16 @@ to go
     [
       show-turtle
     ]
-    if current_mod = 182
+    ; bird-reproducing at certain range, changed
+    if current_mod >= 182 and current_mod <= 187
     [
       bird-repro
     ]
-    
+    ; if energy < 100 and lifetime, lifetime is the additional condition for bird to die
     if current_mod = 243
     [
       hide-turtle
-      if energy < 110
+      if energy < 100 and lifetime < 730
       [ die ]
     ]
   ]
@@ -1219,28 +1220,31 @@ to bird-move
   set energy energy - .5
 end
 
+; set the bug-pop back to 0.001 since the bird moves away
 to bird-eat
   let want 0.0000000028125
   ifelse bug_pop > want
   [
     ask patch-here [set bug_pop bug_pop - want]
-    set energy energy + 1.5
+    set energy energy + 2.0
   ]
   [
     let ratio bug_pop / want
-    set energy energy + 1.5 * ratio
-    ask patch-here [set bug_pop 0]
+    set energy energy + 2.0 * ratio
+    ask patch-here [set bug_pop 0.001]
     bird-move
   ]
 end
 
+; energy change to 20 + random 50
+; lifetime change to 100 + random 1826
 to bird-repro
   if energy >= 70 and ([bird-nests] of patch-here) > 0
   [
     hatch ((random 2) + 1)
     [
-      set energy random 50
-      set lifetime random 700
+      set energy 20 + random 50
+      set lifetime 100 + random 1826
     ]  
     set energy 50
   ]
@@ -1576,7 +1580,7 @@ num-birds
 num-birds
 0
 67
-0
+14
 1
 1
 NIL
