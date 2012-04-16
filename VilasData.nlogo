@@ -4,9 +4,12 @@ extensions [matrix]
 breed [birds bird]
 
 birds-own [energy lifetime]
-
+;added code
+;birds-own [bugsEaten bird-energy SMR]
 patches-own
 [
+  ;added code
+  ;bugs-amt
   landcover
   canopy2k1
   house1996
@@ -39,7 +42,7 @@ globals [
   total_saw
   currentyear_pole
   total_pole
-  
+  counter_patch
   current_profit
   total_profit
   
@@ -168,6 +171,7 @@ to setup
   set currentyear_pole 0
   
   file-open user-file
+  ; skipping line to get user data
   repeat 142462
   [
     let lineone file-read-line
@@ -176,6 +180,7 @@ to setup
   [
     repeat 100
     [
+      ; get the input, skip the comma
       let id file-read
       ;print id
       let skip1 file-read-characters 1
@@ -194,6 +199,7 @@ to setup
       ifelse templandcover = 42
       [ ask patch col row [ set cut-off 8 ] ]
       [ ask patch col row [ set cut-off 10 ] ]
+      ; color assignment
       ask patch col row [select-case templandcover [
         [11 105] ;water
         [12 9.9] ;ice
@@ -236,6 +242,7 @@ to setup
       let skip12 file-read-characters 1
       ask patch col row [ set zoning file-read ]
       ask patch col row [initialize-trees]
+
       let ratio .5
 
        if templandcover = 42
@@ -249,7 +256,7 @@ to setup
          [
            if any? neighbors in-radius 2 with [landcover = 11] or any? neighbors in-radius 2 with [landcover = 90] or any? neighbors in-radius 2 with [landcover = 95]
            [
-             set ratio .75
+            set ratio .75
            ]
          ]]
           
@@ -291,6 +298,7 @@ to setup
     set herb_veg 1
     set bug_pop 1
   ]
+
 end
 
 to select-case [value cases]
@@ -306,7 +314,7 @@ to initialize-trees
   let weights_deci [0.43 0.37 0.2]
   let weights_wet [0.424745355 0.350450241 0.224804403]
   let weights_mix [0.424745355 0.350450241 0.224804403]
-  
+  ; use the function calc_mean_diam
   if landcover = 42 ;Coniferous
   [
     calc_mean_diam weights_conif
@@ -332,7 +340,7 @@ to initialize-trees
   ]
   set tree_height [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
   set volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
-set total_volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
+  set total_volume [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
 end
 
 to calc_mean_diam [weights]
@@ -392,6 +400,9 @@ to calc_mean_diam_sub
   ]
 end
 
+; get the basal area
+; choose either the normal diam distri / negative exp distri
+; half half chance
 to generate_dist
   if mean_diam = 0 [stop]
   let target_basal_area (random 50) + 60
@@ -424,7 +435,7 @@ to generate_dist
   [
     ;negative exponential diameter distribution
     set dist_type 1
-    ;calculate probabilities
+    ;calculate negative exp for each tree size
     let lamda 1 / mean_diam
     let fds [0 0 0 0 0 0 0 0 0 0 0 0]
     set fds replace-item 0 fds calc_fd lamda 1.5
@@ -441,7 +452,7 @@ to generate_dist
     set fds replace-item 11 fds calc_fd lamda 26
    
     let fd_sum sum fds
-    
+    ; divide by fd sum according to the description
     let distr [0 0 0 0 0 0 0 0 0 0 0 0]
     set distr replace-item 0 distr (item 0 fds / fd_sum)
     set distr replace-item 1 distr (item 1 fds / fd_sum)
@@ -456,6 +467,7 @@ to generate_dist
     set distr replace-item 10 distr (item 10 fds / fd_sum)
     set distr replace-item 11 distr (item 11 fds / fd_sum)
     
+    ; get the prob for each tree diameter
     let prob [0 0 0 0 0 0 0 0 0 0 0]
     set prob replace-item 0 prob item 0 distr
     set prob replace-item 1 prob (item 0 distr + item 1 distr)
@@ -483,73 +495,61 @@ to generate_dist
       if rand2 < item 0 prob
       [
         set bin_list replace-item 0 bin_list ((item 0 bin_list) + 1)
-        ;set bin_2 bin_2 + 1
         set tree_size 2
       ]
       if rand2 > item 0 prob and rand2 < item 1 prob
       [
         set bin_list replace-item 1 bin_list ((item 1 bin_list) + 1)
-        ;set bin_4 bin_4 + 1
         set tree_size 4
       ]
       if rand2 > item 1 prob and rand2 < item 2 prob
       [
         set bin_list replace-item 2 bin_list ((item 2 bin_list) + 1)
-        ;set bin_6 bin_6 + 1
         set tree_size 6
       ]
       if rand2 > item 2 prob and rand2 < item 3 prob
       [
         set bin_list replace-item 3 bin_list ((item 3 bin_list) + 1)
-        ;set bin_8 bin_8 + 1
         set tree_size 8
       ]
       if rand2 > item 3 prob and rand2 < item 4 prob
       [
         set bin_list replace-item 4 bin_list ((item 4 bin_list) + 1)
-        ;set bin_10 bin_10 + 1
         set tree_size 10
       ]
       if rand2 > item 4 prob and rand2 < item 5 prob
       [
         set bin_list replace-item 5 bin_list ((item 5 bin_list) + 1)
-        ;set bin_12 bin_12 + 1
         set tree_size 12
       ]
       if rand2 > item 5 prob and rand2 < item 6 prob
       [
         set bin_list replace-item 6 bin_list ((item 6 bin_list) + 1)
-        ;set bin_14 bin_14 + 1
         set tree_size 14
       ]
       if rand2 > item 6 prob and rand2 < item 7 prob
       [
         set bin_list replace-item 7 bin_list ((item 7 bin_list) + 1)
-        ;set bin_16 bin_16 + 1
         set tree_size 16
       ]
       if rand2 > item 7 prob and rand2 < item 8 prob
       [
         set bin_list replace-item 8 bin_list ((item 8 bin_list) + 1)
-        ;set bin_18 bin_18 + 1
         set tree_size 18
       ]
       if rand2 > item 8 prob and rand2 < item 9 prob
       [
         set bin_list replace-item 9 bin_list ((item 9 bin_list) + 1)
-        ;set bin_20 bin_20 + 1
         set tree_size 20
       ]
       if rand2 > item 9 prob and rand2 < item 10 prob
       [
         set bin_list replace-item 10 bin_list ((item 10 bin_list) + 1)
-        ;set bin_22 bin_22 + 1
         set tree_size 22
       ]
       if rand2 > item 10 prob
       [
         set bin_list replace-item 11 bin_list ((item 11 bin_list) + 1)
-        ;set bin_24 bin_24 + 1
         set tree_size 24
       ]
       let basal_area 0.005454 * (tree_size ^ 2)
@@ -559,67 +559,56 @@ to generate_dist
   set b_area running_basal_area
 end
 
+; get the number of tree in the tree bin 
 to increment_tree_bin [tree_size]
   let bins [3 5 7 9 11 13 15 17 19 21 23]
   if tree_size < item 0 bins
   [
     set bin_list replace-item 0 bin_list ((item 0 bin_list) + 1)
-    ;set bin_2 bin_2 + 1
   ]
   if tree_size >= item 0 bins and tree_size < item 1 bins
   [
     set bin_list replace-item 1 bin_list ((item 1 bin_list) + 1)
-    ;set bin_4 bin_4 + 1
   ]
   if tree_size >= item 1 bins and tree_size < item 2 bins
   [
     set bin_list replace-item 2 bin_list ((item 2 bin_list) + 1)
-    ;set bin_6 bin_6 + 1
   ]
   if tree_size >= item 2 bins and tree_size < item 3 bins
   [
     set bin_list replace-item 3 bin_list ((item 3 bin_list) + 1)
-    ;set bin_8 bin_8 + 1
   ]
   if tree_size >= item 3 bins and tree_size < item 4 bins
   [
     set bin_list replace-item 4 bin_list ((item 4 bin_list) + 1)
-    ;set bin_10 bin_10 + 1
   ]
   if tree_size >= item 4 bins and tree_size < item 5 bins
   [
     set bin_list replace-item 5 bin_list ((item 5 bin_list) + 1)
-    ;set bin_12 bin_12 + 1
   ]
   if tree_size >= item 5 bins and tree_size < item 6 bins
   [
     set bin_list replace-item 6 bin_list ((item 6 bin_list) + 1)
-    ;set bin_14 bin_14 + 1
   ]
   if tree_size >= item 6 bins and tree_size < item 7 bins
   [
     set bin_list replace-item 7 bin_list ((item 7 bin_list) + 1)
-    ;set bin_16 bin_16 + 1
   ]
   if tree_size >= item 7 bins and tree_size < item 8 bins
   [
     set bin_list replace-item 8 bin_list ((item 8 bin_list) + 1)
-    ;set bin_18 bin_18 + 1
   ]
   if tree_size >= item 8 bins and tree_size < item 9 bins
   [
     set bin_list replace-item 9 bin_list ((item 9 bin_list) + 1)
-    ;set bin_20 bin_20 + 1
   ]
   if tree_size >= item 9 bins and tree_size < item 10 bins
   [
     set bin_list replace-item 10 bin_list ((item 10 bin_list) + 1)
-    ;set bin_22 bin_22 + 1
   ]
   if tree_size >= item 10 bins
   [
     set bin_list replace-item 11 bin_list ((item 11 bin_list) + 1)
-    ;set bin_24 bin_24 + 1
   ]
 end
 
@@ -634,6 +623,7 @@ to grow-forest
   set mbf 0
   set money_pole 0
   set money_saw 0
+  ; getting the matrix T
   let treematrix matrix:make-constant 12 1 0
   matrix:set-column treematrix 0 bin_list
   let inter2 matrix:make-constant 12 1 0
@@ -666,7 +656,7 @@ to grow-forest
   [
     stop
   ]
-  
+  ; update the tree growth
   set bin_list matrix:get-column inter2 0
   
   let counter 0
@@ -679,6 +669,7 @@ to grow-forest
   ]
 end
 
+; get the matrix upgrowth, mortality, and ingrowth set up
 to initialize-matrix [cover_id]
   let upgrowth [0 0 0 0 0 0 0 0 0 0 0 0]
   let mortality [0 0 0 0 0 0 0 0 0 0 0 0]
@@ -693,7 +684,6 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0164 - 0.0001 * 0.005454 * dia ^ 2 + 0.0055 * dia - 0.0002 * dia ^ 2)
       set mortality replace-item counter mortality (0.0336 - 0.0018 * dia + 0.0001 * dia ^ 2 - 0.00002 * s-constant * dia)
       set ingrowth replace-item counter ingrowth (18.187 - 0.097 * 0.005454 * dia ^ 2)
-      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -707,7 +697,6 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0069 - 0.0001 * 0.005454 * dia ^ 2 + 0.0059 * dia - 0.0002 * dia ^ 2)
       set mortality replace-item counter mortality (0.0418 - 0.0009 * dia)
       set ingrowth replace-item counter ingrowth (7.622 - 0.059 * 0.005454 * dia ^ 2)
-      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -720,7 +709,6 @@ to initialize-matrix [cover_id]
       set upgrowth replace-item counter upgrowth (0.0134 - 0.0002 * 0.005454 * dia ^ 2 + 0.0051 * dia - 0.0002 * dia ^ 2 + 0.00002 * s-constant * dia)
       set mortality replace-item counter mortality (0.0417 - 0.0033 * dia + 0.0001 * dia ^ 2)
       set ingrowth replace-item counter ingrowth (4.603 - 0.035 * 0.005454 * dia ^ 2)
-      ;set b_area b_area + (0.005454 * dia ^ 2)
       set counter counter + 1
     ]
   ]
@@ -761,7 +749,6 @@ to initialize-matrix [cover_id]
     set temp replace-item (column_counter + 1) temp ((1 - (item column_counter mortality)) * (item column_counter upgrowth))
     set columns replace-item column_counter columns temp
     set column_counter column_counter + 1
-    ;show temp
   ]
   
   let templast (item 11 columns)
@@ -809,6 +796,7 @@ to go
     set total_pole total_pole + currentyear_pole
     set currentyear_saw 0
     set currentyear_pole 0
+    ; scale the color of the forest according to the basal area size
     ask patches with [landcover = 41]
     [
       grow-forest
@@ -842,7 +830,8 @@ to go
     ]
   ]
   ; change the nest amount by adjusting a range for current mod
-  if current_mod >= 182 and current_mod <= 186
+  ; get the amount of tree suitable for bird nesting
+if current_mod >= 182 and current_mod <= 186
   [
     ask patches with [landcover = 42]
     [
@@ -852,7 +841,10 @@ to go
         set bird-nests bird-nests + item counter bin_list
         set counter counter + 1
       ]
-      set bird-nests (bird-nests / 10)
+      ; bird nest changed
+      set bird-nests (bird-nests / 30)
+      set bird-nests round bird-nests
+     ;print (bird-nests)
     ]
   ]
   
@@ -869,12 +861,19 @@ to go
     [
       show-turtle
     ]
+    if current_mod >= 152 and current_mod < 182 or current_mod > 187 and current_mod < 243 
+    [
+      if [count birds] of patch-here > 3 [
+       bird-fight 
+      ]
+    ]
     ; bird-reproducing at certain range, changed
     if current_mod >= 182 and current_mod <= 187
     [
       bird-repro
     ]
     ; if energy < 100 and lifetime, lifetime is the additional condition for bird to die
+    ; migrate to the south
     if current_mod = 243
     [
       hide-turtle
@@ -946,6 +945,8 @@ to draw-cut
       if landcover = 41 or landcover = 42 or landcover = 43 or landcover = 90
       [
         calc_profit
+        ; cut all trees
+        ; get the money profit from tree cut and update the bin list
         if strategy = "clear-cut"
         [
           set bin_list [ 0 0 0 0 0 0 0 0 0 0 0 0 ]
@@ -954,6 +955,7 @@ to draw-cut
           set current_profit (current_profit + money_pole + money_saw)
           show bin_list
         ]
+        ; get the index of diameter, repeat and cut all trees above the designated diameter
         if strategy = "diameter"
         [
           let index (dia-cut / 2) - 1
@@ -972,6 +974,11 @@ to draw-cut
           set currentyear_saw currentyear_saw + mbf
           show bin_list
         ]
+        ; select which class category of tree diameter
+        ; then select the q value according to the tree diameter class
+        ; get the total basal area of current tree across diameters
+        ; loop to get the total basal area for a category of tree diameters
+        ; set the new bin list according to the ratio 
         if strategy = "bdq"
         [
           ifelse b_area > B
@@ -984,6 +991,7 @@ to draw-cut
                let inner_count 0
                let endpoint 3
                let startpoint 0
+               ; set the # of times to run the bdq for the diameter onwards
                if counter = 0 [ set endpoint 2 set startpoint 0 ]
                if counter = 1 [ set endpoint 3 set startpoint 2 ]
                if counter = 2 [ set endpoint 2 set startpoint 5 ]
@@ -1111,9 +1119,11 @@ to-report select-case-bdq [value cases]
   ]
 end
 
+; counting profit by selecting landcover with differing
+; diameter of trees (softwoord and hardwood)
+; coniferous is 6,8 others 6,8,10
 to calc_profit
   let counter 0
-  
   set counter 2
   set cord 0
   set mbf 0
@@ -1123,7 +1133,7 @@ to calc_profit
     let dia (counter + 1) * 2
     ifelse dia > cut-off
     [ set T (1.00001 - (9 / dia)) ]
-    [ set T (1.00001 - (5 / dia)) ]
+    [ set T (1.00001 - (4 / dia)) ]
     if landcover = 41
     [
       set tree_height replace-item counter tree_height (4.5 + 6.43 * ((1 - exp(-0.24 * dia)) ^ 1.34) * (s-constant ^ 0.47) * (T ^ 0.73) * (b_area ^ 0.08))
@@ -1148,25 +1158,25 @@ to calc_profit
       ifelse landcover = 42
       [
         set con_fact select-case-42 dia [
-          [10 0.783] ;water
-          [12 0.829] ;ice
-          [14 0.858] ;dev-op
-          [16 0.878] ;dev-low
-          [18 0.895] ;dev-med
-          [20 0.908] ;dev-hi
-          [22 0.917] ;barren
-          [24 0.924] ;forest-dec
+          [10 0.783] 
+          [12 0.829] 
+          [14 0.858] 
+          [16 0.878] 
+          [18 0.895]
+          [20 0.908] 
+          [22 0.917] 
+          [24 0.924]
         ]
       ]
       [
         set con_fact select-case-other dia [
-          [12 0.832] ;ice
-          [14 0.861] ;dev-op
-          [16 0.883] ;dev-low
-          [18 0.9] ;dev-med
-          [20 0.913] ;dev-hi
-          [22 0.924] ;barren
-          [24 0.933] ;forest-dec
+          [12 0.832] 
+          [14 0.861] 
+          [16 0.883] 
+          [18 0.9] 
+          [20 0.913] 
+          [22 0.924] 
+          [24 0.933] 
         ]
       ]
       
@@ -1175,7 +1185,6 @@ to calc_profit
     [
       set cord (cord + (item counter total_volume) / 128)
     ]
-    
     set counter counter + 1
   ]
   
@@ -1204,7 +1213,6 @@ to make-movie
   ;; run the model
   setup
   movie-start path
-  ;movie-grab-view
   movie-grab-interface
   while [ ticks < (365 * 10) ]
     [ go
@@ -1215,9 +1223,18 @@ to make-movie
   user-message (word "Exported movie to " path)
 end
 
+; 2)
 to bird-move
   move-to one-of patches with [landcover = 42] in-radius 1.1
   set energy energy - .5
+end
+
+to bird-fight
+  if energy <= 50 [
+    die
+  ]
+  ;set energy energy - 1.5
+
 end
 
 ; set the bug-pop back to 0.001 since the bird moves away
@@ -1245,6 +1262,11 @@ to bird-repro
     [
       set energy 20 + random 50
       set lifetime 100 + random 1826
+      ifelse count patches with [landcover = 42 and count birds-here = 0] > 0
+      [
+        move-to one-of patches with [landcover = 42 and count birds-here = 0] 
+      ]
+      [die]
     ]  
     set energy 50
   ]
@@ -1261,10 +1283,10 @@ end
 GRAPHICS-WINDOW
 211
 10
-849
-669
-51
-51
+837
+657
+50
+50
 6.1
 1
 10
@@ -1272,13 +1294,13 @@ GRAPHICS-WINDOW
 1
 1
 0
-0
-0
 1
--51
-51
--51
-51
+1
+1
+-50
+50
+-50
+50
 0
 0
 1
@@ -1403,7 +1425,7 @@ q
 q
 1.2
 1.8
-1.2
+1.8
 .1
 1
 NIL
@@ -1580,19 +1602,97 @@ num-birds
 num-birds
 0
 67
-14
+1
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-867
-85
-924
-130
+863
+64
+920
+109
 Birds
 count birds
+17
+1
+11
+
+SLIDER
+25
+577
+197
+610
+start-birds
+start-birds
+1
+100
+100
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+31
+628
+208
+661
+bugs-eaten-per-tick
+bugs-eaten-per-tick
+1
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+33
+675
+156
+708
+bird-labels
+bird-labels
+1
+1
+-1000
+
+SWITCH
+174
+683
+299
+716
+bird-reprod
+bird-reprod
+1
+1
+-1000
+
+SLIDER
+326
+693
+544
+726
+birds-energy-to-reproduce
+birds-energy-to-reproduce
+1
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+863
+118
+943
+163
+year
+floor(ticks / 365)
 17
 1
 11
